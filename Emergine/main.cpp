@@ -25,6 +25,7 @@
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 const char* TITLE = "Emergine";
+const auto VERSION = VK_MAKE_VERSION(0, 1, 2);
 #pragma endregion CONSTANTS
 
 
@@ -39,7 +40,11 @@ public:
 
 private:
 	#pragma region --- CLASS MEMBERS ---
+	// the window holding the application
 	GLFWwindow* window;
+
+	// the vulkan instance
+	VkInstance instance;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -60,7 +65,42 @@ private:
 
 	#pragma region --- INIT VULKAN ---
 	void initVulkan() {
+		createInstance();
+	}
 
+	void createInstance() {
+		#pragma region --- APP INFO ---
+		VkApplicationInfo appInfo{};
+		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		appInfo.pApplicationName = TITLE;
+		appInfo.applicationVersion = VERSION;
+		appInfo.pEngineName = "Emergine";
+		appInfo.engineVersion = VERSION;
+		// minimum api version
+		appInfo.apiVersion = VK_API_VERSION_1_0;
+		#pragma endregion APP INFO
+		
+		#pragma region --- CREATE INFO ---
+		VkInstanceCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		createInfo.pApplicationInfo = &appInfo;
+
+		#pragma region --- GLOBAL EXTENSIONS ---
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions;
+
+		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+		createInfo.enabledExtensionCount = glfwExtensionCount;
+		createInfo.ppEnabledExtensionNames = glfwExtensions;
+		#pragma endregion
+
+		createInfo.enabledLayerCount = 0;
+		#pragma endregion CREATE INFO
+
+		if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+			yeet broken_shoe("failed to create instance!");
+		}
 	}
 	#pragma endregion INIT VULKAN
 	
