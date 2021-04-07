@@ -5,19 +5,20 @@
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 #pragma endregion INCLUDES
 
-//using namespace std;
+using namespace std;
 
 #pragma region --- DEFINES ---
 #pragma region --- QOL ---
-#define print std::cout
-#define printError std::cerr
+#define print cout
+#define printError cerr
 #pragma endregion QOL
 
 #pragma region --- FUN ---
 #define yeet throw
-#define broken_shoe std::runtime_error
+#define broken_shoe runtime_error
 #pragma endregion FUN
 #pragma endregion DEFINES
 
@@ -96,11 +97,28 @@ private:
 		#pragma endregion
 
 		createInfo.enabledLayerCount = 0;
-		#pragma endregion CREATE INFO
 
 		if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
 			yeet broken_shoe("failed to create instance!");
 		}
+		#pragma endregion CREATE INFO
+
+		#pragma region --- EXTENSION SUPPORT ---
+		uint32_t extensionCount = 0;
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+
+		vector<VkExtensionProperties> extensions(extensionCount);
+
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+
+		// print supported extensions
+		print << "available extensions:\n";
+
+		for (const auto& extension : extensions)
+		{
+			print << '\t' << extension.extensionName << '\n';
+		}
+		#pragma endregion EXTENSION SUPPORT
 	}
 	#pragma endregion INIT VULKAN
 	
@@ -131,9 +149,9 @@ int main() {
 	{
 		app.run();
 	}
-	catch (const std::exception& e)
+	catch (const exception& e)
 	{
-		printError << e.what() << std::endl;
+		printError << e.what() << endl;
 		return EXIT_FAILURE;
 	}
 
