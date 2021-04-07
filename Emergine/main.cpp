@@ -133,6 +133,9 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the vulkan instance
+		vkDestroyInstance(instance, nullptr);
+
 		// destroy the window
 		glfwDestroyWindow(window);
 
