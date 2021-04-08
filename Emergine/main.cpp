@@ -20,6 +20,20 @@ using namespace std;
 #define yeet throw
 #define broken_shoe runtime_error
 #pragma endregion FUN
+
+#pragma region --- VULKAN ---
+// debug severities
+#define VK_DEBUG_VERBOSE VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+#define VK_DEBUG_INFO VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+#define VK_DEBUG_WARNING VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+#define VK_DEBUG_ERROR VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+
+// debug types
+#define VK_DEBUG_TYPE_GENERAL VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+#define VK_DEBUG_TYPE_VALIDATION VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+#define VK_DEBUG_TYPE_PERFORMANCE VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+#pragma endregion VULKAN
+
 #pragma endregion DEFINES
 
 #pragma region --- CONSTANTS ---
@@ -58,6 +72,9 @@ private:
 
 	// the vulkan instance
 	VkInstance instance;
+
+	// vulkan debug messenger
+	VkDebugUtilsMessengerEXT debugMessenger;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -79,6 +96,7 @@ private:
 	#pragma region --- INIT VULKAN ---
 	void initVulkan() {
 		createInstance();
+		setupDebugMessenger();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -87,6 +105,7 @@ private:
 		{
 			yeet broken_shoe("validation layers requested, but not available!");
 		}
+
 		#pragma region --- APP INFO ---
 		VkApplicationInfo appInfo{};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -104,14 +123,10 @@ private:
 		createInfo.pApplicationInfo = &appInfo;
 
 		#pragma region --- GLOBAL EXTENSIONS ---
-		uint32_t glfwExtensionCount = 0;
-		const char** glfwExtensions;
-
-		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-		createInfo.enabledExtensionCount = glfwExtensionCount;
-		createInfo.ppEnabledExtensionNames = glfwExtensions;
-		#pragma endregion
+		auto globalExtensions = getRequiredExtensions();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(globalExtensions.size());
+		createInfo.ppEnabledExtensionNames = globalExtensions.data();
+		#pragma endregion GLOBAL EXTENSIONS
 
 		if (enableValidationLayers)
 		{
@@ -172,7 +187,74 @@ private:
 
 		return true;
 	}
+
+	vector<const char*> getRequiredExtensions() {
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions;
+		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+		vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+		if (enableValidationLayers)
+		{
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+
+		return extensions;
+	}
 	#pragma endregion CREATE INSTANCE
+
+	#pragma region --- DEBUG ---
+	void setupDebugMessenger() {
+		if (!enableValidationLayers)
+		{
+			return;
+		}
+
+		#pragma region --- CREATE INFO ---
+		VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		// default severities = VK_DEBUG_VERBOSE | VK_DEBUG_WARNING | VK_DEBUG_ERROR;
+		createInfo.messageSeverity = VK_DEBUG_VERBOSE| VK_DEBUG_WARNING | VK_DEBUG_ERROR;
+		// default types = VK_DEBUG_TYPE_GENERAL | VK_DEBUG_TYPE_VALIDATION | VK_DEBUG_TYPE_PERFORMANCE;
+		createInfo.messageType = VK_DEBUG_TYPE_GENERAL | VK_DEBUG_TYPE_VALIDATION | VK_DEBUG_TYPE_PERFORMANCE;
+		createInfo.pfnUserCallback = debugCallback;
+		createInfo.pUserData = nullptr;
+		#pragma endregion
+
+		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to set up debug messenger!");
+		}
+	}
+
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT msgType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* pUserData) {
+		print << "validation layer: " << pCallbackData->pMessage << endl;
+
+		return VK_FALSE;
+	}
+
+	static VkResult CreateDebugUtilsMessengerEXT(
+		VkInstance instance,
+		const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+		VkAllocationCallbacks* pAllocator, // heh, Pal-Locator
+		VkDebugUtilsMessengerEXT* pDebugMessenger)
+	{
+		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+
+		if (func != nullptr)
+		{
+			return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+		}
+		else {
+			return VK_ERROR_EXTENSION_NOT_PRESENT;
+		}
+	}
+	#pragma endregion DEBUG
 	#pragma endregion INIT VULKAN
 	
 	#pragma region --- MAIN LOOP ---
@@ -186,6 +268,12 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the debugger
+		if (enableValidationLayers)
+		{
+			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+		}
+
 		// destroy the vulkan instance
 		vkDestroyInstance(instance, nullptr);
 
@@ -194,6 +282,18 @@ private:
 
 		// terminate glfw
 		glfwTerminate();
+	}
+
+	static void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+		VkDebugUtilsMessengerEXT debugMessenger,
+		const VkAllocationCallbacks* pAllocator)
+	{
+		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+
+		if (func != nullptr)
+		{
+			func(instance, debugMessenger, pAllocator);
+		}
 	}
 	#pragma endregion CLEANUP
 };
