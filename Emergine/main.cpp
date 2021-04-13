@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <stdexcept>
 #include <vector>
 #pragma endregion INCLUDES
@@ -76,6 +77,10 @@ private:
 	VkInstance instance;
 	// vulkan debug messenger
 	VkDebugUtilsMessengerEXT debugMessenger;
+
+	// physical device (aka GPU)
+	// implicitly destroyed with the vulkan instance
+	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -97,6 +102,7 @@ private:
 	void initVulkan() {
 		createInstance();
 		setupDebugMessenger();
+		pickPhysicalDevice();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -213,6 +219,58 @@ private:
 		}
 	}
 	#pragma endregion CREATE INSTANCE
+
+	#pragma region --- PHYSICAL DEVICE ---
+	void pickPhysicalDevice() {
+		// count devices with vulkan support
+		uint32_t deviceCount = 0;
+		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+		if (deviceCount == 0)
+		{
+			yeet broken_shoe("failed to find GPUs with Vulkan support!");
+		}
+
+		print << "devices with vulkan support: " << deviceCount << endl;
+
+		// store all compatible devices in a vector
+		vector<VkPhysicalDevice> devices(deviceCount);
+		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+		multimap<VkPhysicalDevice, int> candidates;
+		for (const VkPhysicalDevice& device : devices)
+		{
+			if (isDeviceSuitable(device))
+			{
+				int score = rateDeviceSuitability(device);
+				candidates.insert(make_pair(device, score));
+				VkPhysicalDeviceProperties props;
+				vkGetPhysicalDeviceProperties(device, &props);
+				print << '\t' << props.deviceName << '\t' << score << endl;
+			}
+		}
+
+		// check if the best candicate is suitable at all
+		if (candidates.rbegin()->first > 0)
+		{
+			physicalDevice = candidates.rbegin()->first;
+		}
+		else
+		{
+			yeet broken_shoe("failed to find a suitable GPU!");
+		}
+	}
+
+	bool isDeviceSuitable(VkPhysicalDevice device) {
+		// TODO: check if suitable
+		return true;
+	}
+
+	int rateDeviceSuitability(VkPhysicalDevice device) {
+		// TODO check how suitable a device is
+		return 1;
+	}
+	#pragma endregion PHYSICAL DEVICE
 	#pragma endregion INIT VULKAN
 
 	#pragma region --- DEBUG ---
