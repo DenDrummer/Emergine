@@ -1,8 +1,11 @@
 #pragma region --- INCLUDES ---
+// window library with built in vulkan include
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+// std imports
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -20,13 +23,38 @@ using namespace std;
 #define yeet throw
 #define broken_shoe runtime_error
 #pragma endregion FUN
+
+#pragma region --- VULKAN ---
+// debug severities
+#define VK_DEBUG_VERBOSE VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+#define VK_DEBUG_INFO VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+#define VK_DEBUG_WARNING VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+#define VK_DEBUG_ERROR VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+
+// debug types
+#define VK_DEBUG_TYPE_GENERAL VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+#define VK_DEBUG_TYPE_VALIDATION VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+#define VK_DEBUG_TYPE_PERFORMANCE VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+#pragma endregion VULKAN
 #pragma endregion DEFINES
 
 #pragma region --- CONSTANTS ---
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
+
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 2);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 3);
+
+const vector<const char*> validationLayers = {
+	"VK_LAYER_KHRONOS_validation"
+};
+
+#ifdef NDEBUG
+const bool enableValidationLayers = false;
+#else
+const bool enableValidationLayers = true;
+#endif // NDEBUG
+
 #pragma endregion CONSTANTS
 
 
@@ -46,6 +74,8 @@ private:
 
 	// the vulkan instance
 	VkInstance instance;
+	// vulkan debug messenger
+	VkDebugUtilsMessengerEXT debugMessenger;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -55,7 +85,6 @@ private:
 
 		// tell glfw to not use OpenGL
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
 		// tell glfw to disable resizing windows (for now)
 		// TODO: enable resizing windows
 		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
@@ -67,9 +96,16 @@ private:
 	#pragma region --- INIT VULKAN ---
 	void initVulkan() {
 		createInstance();
+		setupDebugMessenger();
 	}
 
+	#pragma region --- CREATE INSTANCE ---
 	void createInstance() {
+		if (enableValidationLayers && !checkValidationLayerSupport())
+		{
+			yeet broken_shoe("validation layers requested, but not available!");
+		}
+
 		#pragma region --- APP INFO ---
 		VkApplicationInfo appInfo{};
 		appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -78,6 +114,7 @@ private:
 		appInfo.pEngineName = "Emergine";
 		appInfo.engineVersion = VERSION;
 		// minimum api version
+		// see VkVersions.md
 		appInfo.apiVersion = VK_API_VERSION_1_0;
 		#pragma endregion APP INFO
 		
@@ -87,23 +124,79 @@ private:
 		createInfo.pApplicationInfo = &appInfo;
 
 		#pragma region --- GLOBAL EXTENSIONS ---
-		uint32_t glfwExtensionCount = 0;
-		const char** glfwExtensions;
+		auto globalExtensions = getRequiredExtensions();
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(globalExtensions.size());
+		createInfo.ppEnabledExtensionNames = globalExtensions.data();
+		#pragma endregion GLOBAL EXTENSIONS
 
-		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+		#pragma region --- VALIDATION LAYERS ---
+		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
+		if (enableValidationLayers)
+		{
+			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+			createInfo.ppEnabledLayerNames = validationLayers.data();
 
-		createInfo.enabledExtensionCount = glfwExtensionCount;
-		createInfo.ppEnabledExtensionNames = glfwExtensions;
-		#pragma endregion
-
-		createInfo.enabledLayerCount = 0;
-
+			populateDebugMessengerCreateInfo(debugCreateInfo);
+			createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+		}
+		else
+		{
+			createInfo.enabledLayerCount = 0;
+			createInfo.pNext = nullptr;
+		}
+		#pragma endregion VALIDATION LAYERS
+		
 		if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
 			yeet broken_shoe("failed to create instance!");
 		}
 		#pragma endregion CREATE INFO
 
-		#pragma region --- EXTENSION SUPPORT ---
+		printExtensionSupport();
+	}
+
+	bool checkValidationLayerSupport() {
+		uint32_t layerCount;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+		vector<VkLayerProperties> availableLayers(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+		for (const char* layerName : validationLayers) {
+			bool layerFound = false;
+
+			for (const auto& layerProps : availableLayers) {
+				if (strcmp(layerName, layerProps.layerName) == 0)
+				{
+					layerFound = true;
+					break;
+				}
+			}
+
+			if (!layerFound)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	vector<const char*> getRequiredExtensions() {
+		uint32_t glfwExtensionCount = 0;
+		const char** glfwExtensions;
+		glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+		vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+		if (enableValidationLayers)
+		{
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+
+		return extensions;
+	}
+
+	void printExtensionSupport() {
 		uint32_t extensionCount = 0;
 		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 
@@ -118,9 +211,78 @@ private:
 		{
 			print << '\t' << extension.extensionName << '\n';
 		}
-		#pragma endregion EXTENSION SUPPORT
 	}
+	#pragma endregion CREATE INSTANCE
 	#pragma endregion INIT VULKAN
+
+	#pragma region --- DEBUG ---
+	void setupDebugMessenger() {
+		if (!enableValidationLayers)
+		{
+			return;
+		}
+
+		VkDebugUtilsMessengerCreateInfoEXT createInfo;
+		populateDebugMessengerCreateInfo(createInfo);
+
+		if (CreateDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to set up debug messenger!");
+		}
+	}
+
+	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo) {
+		createInfo = {};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		// default severities = VK_DEBUG_VERBOSE | VK_DEBUG_WARNING | VK_DEBUG_ERROR;
+		createInfo.messageSeverity = VK_DEBUG_VERBOSE | VK_DEBUG_WARNING | VK_DEBUG_ERROR;
+		// default types = VK_DEBUG_TYPE_GENERAL | VK_DEBUG_TYPE_VALIDATION | VK_DEBUG_TYPE_PERFORMANCE;
+		createInfo.messageType = VK_DEBUG_TYPE_GENERAL | VK_DEBUG_TYPE_VALIDATION | VK_DEBUG_TYPE_PERFORMANCE;
+		createInfo.pfnUserCallback = debugCallback;
+		// optional
+		createInfo.pUserData = nullptr;
+	}
+
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT msgSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT msgType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* pUserData) {
+		printError << "validation layer: " << pCallbackData->pMessage << endl;
+
+		return VK_FALSE;
+	}
+
+	static VkResult CreateDebugUtilsMessengerEXT(
+		VkInstance instance,
+		const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+		VkAllocationCallbacks* pAllocator, // heh, Pal-Locator
+		VkDebugUtilsMessengerEXT* pDebugMessenger)
+	{
+		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+
+		if (func != nullptr)
+		{
+			return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+		}
+		else {
+			return VK_ERROR_EXTENSION_NOT_PRESENT;
+		}
+	}
+
+	static void DestroyDebugUtilsMessengerEXT(
+		VkInstance instance,
+		VkDebugUtilsMessengerEXT debugMessenger,
+		const VkAllocationCallbacks* pAllocator)
+	{
+		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+
+		if (func != nullptr)
+		{
+			func(instance, debugMessenger, pAllocator);
+		}
+	}
+	#pragma endregion DEBUG
 	
 	#pragma region --- MAIN LOOP ---
 	void mainLoop() {
@@ -133,6 +295,12 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the debugger
+		if (enableValidationLayers)
+		{
+			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+		}
+
 		// destroy the vulkan instance
 		vkDestroyInstance(instance, nullptr);
 
