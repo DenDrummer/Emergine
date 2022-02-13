@@ -8,6 +8,7 @@
 #include <cstring>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 #pragma endregion INCLUDES
@@ -60,6 +61,18 @@ const bool enableValidationLayers = true;
 #endif // NDEBUG
 
 #pragma endregion CONSTANTS
+
+#pragma region --- STRUCTS ---
+struct QueueFamilyIndices
+{
+	optional<uint32_t> graphicsFamily;
+
+	bool isComplete() {
+		return graphicsFamily.has_value();
+	}
+};
+#pragma endregion STRUCTS
+
 
 
 class EmergineApp {
@@ -283,7 +296,9 @@ private:
 			&& feats.geometryShader;*/
 		#pragma endregion EXAMPLE CHECKS
 
-		return true;
+		QueueFamilyIndices indices = findQueueFamilies(device);
+
+		return indices.isComplete();
 	}
 
 	int rateDeviceSuitability(VkPhysicalDevice device) {
@@ -316,6 +331,34 @@ private:
 		#pragma endregion EXAMPLE SCORE
 
 		return 1;
+	}
+
+	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+		QueueFamilyIndices indices;
+		
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+		vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+		int i = 0;
+		for (const VkQueueFamilyProperties& queueFamily : queueFamilies)
+		{
+			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			{
+				indices.graphicsFamily = i;
+			}
+
+			if (indices.isComplete())
+			{
+				break;
+			}
+
+			i++;
+		}
+
+		return indices;
 	}
 	#pragma endregion PHYSICAL DEVICE
 	#pragma endregion INIT VULKAN
