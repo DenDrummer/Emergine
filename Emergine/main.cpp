@@ -36,6 +36,9 @@ using namespace std;
 #define VK_DEBUG_TYPE_GENERAL VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
 #define VK_DEBUG_TYPE_VALIDATION VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
 #define VK_DEBUG_TYPE_PERFORMANCE VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+
+// device properties & features
+#define VK_TYPE_DISCRETE_GPU VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
 #pragma endregion VULKAN
 #pragma endregion DEFINES
 
@@ -237,6 +240,7 @@ private:
 		vector<VkPhysicalDevice> devices(deviceCount);
 		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+		#pragma region --- SUITABILITY CHECKs ---
 		multimap<VkPhysicalDevice, int> candidates;
 		for (const VkPhysicalDevice& device : devices)
 		{
@@ -244,6 +248,7 @@ private:
 			{
 				int score = rateDeviceSuitability(device);
 				candidates.insert(make_pair(device, score));
+				// for debugging purposes
 				VkPhysicalDeviceProperties props;
 				vkGetPhysicalDeviceProperties(device, &props);
 				print << '\t' << props.deviceName << '\t' << score << endl;
@@ -259,15 +264,57 @@ private:
 		{
 			yeet broken_shoe("failed to find a suitable GPU!");
 		}
+		#pragma endregion SUITABILITY CHECKs
 	}
 
 	bool isDeviceSuitable(VkPhysicalDevice device) {
-		// TODO: check if suitable
+		#pragma region --- EXAMPLE CHECKS ---
+		/*// get device properties
+		VkPhysicalDeviceProperties props;
+		vkGetPhysicalDeviceProperties(device, &props);
+
+		// get device features
+		VkPhysicalDeviceFeatures feats;
+		vkGetPhysicalDeviceFeatures(device, &feats);
+
+		// check if dedicated graphics card which supports:
+		// • geometry shaders
+		return props.deviceType == VK_TYPE_DISCRETE_GPU
+			&& feats.geometryShader;*/
+		#pragma endregion EXAMPLE CHECKS
+
 		return true;
 	}
 
 	int rateDeviceSuitability(VkPhysicalDevice device) {
-		// TODO check how suitable a device is
+		#pragma region --- EXAMPLE SCORE ---
+		/*VkPhysicalDeviceProperties props;
+		vkGetPhysicalDeviceProperties(device, &props);
+
+		// get device features
+		VkPhysicalDeviceFeatures feats;
+		vkGetPhysicalDeviceFeatures(device, &feats);
+
+		int score = 0;
+
+		// Discrete GPUs have a significan performance advantage
+		if (props.deviceType == VK_TYPE_DISCRETE_GPU)
+		{
+			score += 1000;
+		}
+
+		// Maximum possible size of textures affects graphics quality
+		score += props.limits.maxImageDimension2D;
+
+		// Application can't function without geometry shaders
+		if (!feats.geometryShader)
+		{
+			return 0;
+		}
+
+		return score;*/
+		#pragma endregion EXAMPLE SCORE
+
 		return 1;
 	}
 	#pragma endregion PHYSICAL DEVICE
