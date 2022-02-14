@@ -97,6 +97,8 @@ private:
 	// physical device (aka GPU)
 	// implicitly destroyed with the vulkan instance
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	// logical device
+	VkDevice device;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -119,6 +121,7 @@ private:
 		createInstance();
 		setupDebugMessenger();
 		pickPhysicalDevice();
+		createLogicalDevice();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -361,6 +364,12 @@ private:
 		return indices;
 	}
 	#pragma endregion PHYSICAL DEVICE
+
+	#pragma region --- CREATE LOGICAL DEVICE ---
+	void createLogicalDevice() {
+
+	}
+	#pragma endregion CREATE LOGICAL DEVICE
 	#pragma endregion INIT VULKAN
 
 	#pragma region --- DEBUG ---
