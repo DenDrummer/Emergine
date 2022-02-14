@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <map>
+#include <optional>
 #include <stdexcept>
 #include <vector>
 #pragma endregion INCLUDES
@@ -35,6 +37,9 @@ using namespace std;
 #define VK_DEBUG_TYPE_GENERAL VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
 #define VK_DEBUG_TYPE_VALIDATION VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
 #define VK_DEBUG_TYPE_PERFORMANCE VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+
+// device properties & features
+#define VK_TYPE_DISCRETE_GPU VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
 #pragma endregion VULKAN
 #pragma endregion DEFINES
 
@@ -57,6 +62,18 @@ const bool enableValidationLayers = true;
 
 #pragma endregion CONSTANTS
 
+#pragma region --- STRUCTS ---
+struct QueueFamilyIndices
+{
+	optional<uint32_t> graphicsFamily;
+
+	bool isComplete() {
+		return graphicsFamily.has_value();
+	}
+};
+#pragma endregion STRUCTS
+
+
 
 class EmergineApp {
 public:
@@ -76,6 +93,10 @@ private:
 	VkInstance instance;
 	// vulkan debug messenger
 	VkDebugUtilsMessengerEXT debugMessenger;
+
+	// physical device (aka GPU)
+	// implicitly destroyed with the vulkan instance
+	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -97,6 +118,7 @@ private:
 	void initVulkan() {
 		createInstance();
 		setupDebugMessenger();
+		pickPhysicalDevice();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -213,6 +235,132 @@ private:
 		}
 	}
 	#pragma endregion CREATE INSTANCE
+
+	#pragma region --- PHYSICAL DEVICE ---
+	void pickPhysicalDevice() {
+		// count devices with vulkan support
+		uint32_t deviceCount = 0;
+		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+		if (deviceCount == 0)
+		{
+			yeet broken_shoe("failed to find GPUs with Vulkan support!");
+		}
+
+		print << "devices with vulkan support: " << deviceCount << endl;
+
+		// store all compatible devices in a vector
+		vector<VkPhysicalDevice> devices(deviceCount);
+		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+		#pragma region --- SUITABILITY CHECKs ---
+		multimap<VkPhysicalDevice, int> candidates;
+		for (const VkPhysicalDevice& device : devices)
+		{
+			if (isDeviceSuitable(device))
+			{
+				int score = rateDeviceSuitability(device);
+				candidates.insert(make_pair(device, score));
+				// for debugging purposes
+				VkPhysicalDeviceProperties props;
+				vkGetPhysicalDeviceProperties(device, &props);
+				print << '\t' << props.deviceName << '\t' << score << endl;
+			}
+		}
+
+		// check if the best candicate is suitable at all
+		if (candidates.rbegin()->first > 0)
+		{
+			physicalDevice = candidates.rbegin()->first;
+		}
+		else
+		{
+			yeet broken_shoe("failed to find a suitable GPU!");
+		}
+		#pragma endregion SUITABILITY CHECKs
+	}
+
+	bool isDeviceSuitable(VkPhysicalDevice device) {
+		#pragma region --- EXAMPLE CHECKS ---
+		/*// get device properties
+		VkPhysicalDeviceProperties props;
+		vkGetPhysicalDeviceProperties(device, &props);
+
+		// get device features
+		VkPhysicalDeviceFeatures feats;
+		vkGetPhysicalDeviceFeatures(device, &feats);
+
+		// check if dedicated graphics card which supports:
+		// • geometry shaders
+		return props.deviceType == VK_TYPE_DISCRETE_GPU
+			&& feats.geometryShader;*/
+		#pragma endregion EXAMPLE CHECKS
+
+		QueueFamilyIndices indices = findQueueFamilies(device);
+
+		return indices.isComplete();
+	}
+
+	int rateDeviceSuitability(VkPhysicalDevice device) {
+		#pragma region --- EXAMPLE SCORE ---
+		/*VkPhysicalDeviceProperties props;
+		vkGetPhysicalDeviceProperties(device, &props);
+
+		// get device features
+		VkPhysicalDeviceFeatures feats;
+		vkGetPhysicalDeviceFeatures(device, &feats);
+
+		int score = 0;
+
+		// Discrete GPUs have a significan performance advantage
+		if (props.deviceType == VK_TYPE_DISCRETE_GPU)
+		{
+			score += 1000;
+		}
+
+		// Maximum possible size of textures affects graphics quality
+		score += props.limits.maxImageDimension2D;
+
+		// Application can't function without geometry shaders
+		if (!feats.geometryShader)
+		{
+			return 0;
+		}
+
+		return score;*/
+		#pragma endregion EXAMPLE SCORE
+
+		return 1;
+	}
+
+	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+		QueueFamilyIndices indices;
+		
+		uint32_t queueFamilyCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+		vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+		int i = 0;
+		for (const VkQueueFamilyProperties& queueFamily : queueFamilies)
+		{
+			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+			{
+				indices.graphicsFamily = i;
+			}
+
+			if (indices.isComplete())
+			{
+				break;
+			}
+
+			i++;
+		}
+
+		return indices;
+	}
+	#pragma endregion PHYSICAL DEVICE
 	#pragma endregion INIT VULKAN
 
 	#pragma region --- DEBUG ---
