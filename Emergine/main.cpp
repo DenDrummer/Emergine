@@ -48,7 +48,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 3);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 5);
 
 const vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
@@ -369,15 +369,45 @@ private:
 	void createLogicalDevice() {
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
-		VkDeviceQueueCreateInfo queueCI{};
-		queueCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCI.queueFamilyIndex = indices.graphicsFamily.value();
-		queueCI.queueCount = 1;
+		#pragma region --- QUEUE CREATE INFO ---
+		VkDeviceQueueCreateInfo queueCreateInfo{};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+		queueCreateInfo.queueCount = 1;
 
 		float queuePriority = 1.0f;
-		queueCI.pQueuePriorities = &queuePriority;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+		#pragma endregion QUEUE CREATE INFO
 
 		VkPhysicalDeviceFeatures deviceFeatures{};
+		
+		#pragma region --- DEVICE CREATE INFO ---
+		VkDeviceCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		createInfo.pQueueCreateInfos = &queueCreateInfo;
+		createInfo.queueCreateInfoCount = 1;
+
+		createInfo.pEnabledFeatures = &deviceFeatures;
+
+		createInfo.enabledExtensionCount = 0;
+
+		// ignored by up-to-date implementations,
+		// but assigned for more backwards compatibility
+		if (enableValidationLayers)
+		{
+			createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+			createInfo.ppEnabledLayerNames = validationLayers.data();
+		}
+		else
+		{
+			createInfo.enabledLayerCount = 0;
+		}
+		#pragma endregion DEVICE CREATE INFO
+
+		if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create logical device!");
+		}
 	}
 	#pragma endregion CREATE LOGICAL DEVICE
 	#pragma endregion INIT VULKAN
@@ -462,6 +492,9 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the logical device
+		vkDestroyDevice(device, nullptr);
+
 		// destroy the debugger
 		if (enableValidationLayers)
 		{
