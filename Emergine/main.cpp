@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <vector>
 #pragma endregion INCLUDES
@@ -95,18 +96,22 @@ private:
 	VkInstance instance;
 	// vulkan debug messenger
 	VkDebugUtilsMessengerEXT debugMessenger;
+	// window surface (aka the canvas of the window on which things get drawn)
+	VkSurfaceKHR surface;
 
+	#pragma region --- DEVICES ---
 	// physical device (aka GPU)
 	// implicitly destroyed with the vulkan instance
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	// logical device
 	VkDevice device;
+	#pragma endregion DEVICES
 
+	#pragma region QUEUES
 	// graphics queue
 	VkQueue graphicsQueue;
-
-	// window surface (aka the canvas of the window on which things get drawn)
-	VkSurfaceKHR surface;
+	// presentation queue
+	VkQueue presentQueue;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -397,13 +402,26 @@ private:
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
 		#pragma region --- QUEUE CREATE INFO ---
-		VkDeviceQueueCreateInfo queueCreateInfo{};
-		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
-		queueCreateInfo.queueCount = 1;
+		vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+		set<uint32_t> uniqueQueueFamilies = {
+			indices.graphicsFamily.value(),
+			indices.presentFamily.value()
+		};
 
 		float queuePriority = 1.0f;
-		queueCreateInfo.pQueuePriorities = &queuePriority;
+		for (uint32_t queueFamily : uniqueQueueFamilies)
+		{
+			// create new queue
+			VkDeviceQueueCreateInfo queueCreateInfo{};
+			queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+			queueCreateInfo.queueFamilyIndex = queueFamily;
+			queueCreateInfo.queueCount = 1;
+			queueCreateInfo.pQueuePriorities = &queuePriority;
+
+			// add new queue to list of queues
+			queueCreateInfos.push_back(queueCreateInfo);
+		}
+
 		#pragma endregion QUEUE CREATE INFO
 
 		VkPhysicalDeviceFeatures deviceFeatures{};
@@ -411,8 +429,8 @@ private:
 		#pragma region --- DEVICE CREATE INFO ---
 		VkDeviceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		createInfo.pQueueCreateInfos = &queueCreateInfo;
-		createInfo.queueCreateInfoCount = 1;
+		createInfo.queueCreateInfoCount = static_cast<int32_t>(queueCreateInfos.size());
+		createInfo.pQueueCreateInfos = queueCreateInfos.data();
 
 		createInfo.pEnabledFeatures = &deviceFeatures;
 
@@ -437,6 +455,7 @@ private:
 		}
 
 		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 	}
 	#pragma endregion CREATE LOGICAL DEVICE
 	#pragma endregion INIT VULKAN
