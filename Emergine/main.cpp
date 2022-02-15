@@ -367,7 +367,15 @@ private:
 
 	#pragma region --- CREATE LOGICAL DEVICE ---
 	void createLogicalDevice() {
+		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
+		VkDeviceQueueCreateInfo queueCI{};
+		queueCI.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCI.queueFamilyIndex = indices.graphicsFamily.value();
+		queueCI.queueCount = 1;
+
+		float queuePriority = 1.0f;
+		queueCI.pQueuePriorities = &queuePriority;
 	}
 	#pragma endregion CREATE LOGICAL DEVICE
 	#pragma endregion INIT VULKAN
