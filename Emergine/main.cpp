@@ -48,7 +48,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 5);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 6);
 
 const vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
@@ -66,9 +66,11 @@ const bool enableValidationLayers = true;
 struct QueueFamilyIndices
 {
 	optional<uint32_t> graphicsFamily;
+	optional<uint32_t> presentFamily;
 
 	bool isComplete() {
-		return graphicsFamily.has_value();
+		return graphicsFamily.has_value()
+			&& presentFamily.has_value();
 	}
 };
 #pragma endregion STRUCTS
@@ -368,6 +370,14 @@ private:
 			if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 			{
 				indices.graphicsFamily = i;
+			}
+
+			VkBool32 presentSupport = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+			if (presentSupport)
+			{
+				indices.presentFamily = i;
 			}
 
 			if (indices.isComplete())
