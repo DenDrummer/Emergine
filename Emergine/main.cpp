@@ -99,6 +99,9 @@ private:
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	// logical device
 	VkDevice device;
+
+	// graphics queue
+	VkQueue graphicsQueue;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -408,6 +411,8 @@ private:
 		{
 			yeet broken_shoe("failed to create logical device!");
 		}
+
+		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 	}
 	#pragma endregion CREATE LOGICAL DEVICE
 	#pragma endregion INIT VULKAN
