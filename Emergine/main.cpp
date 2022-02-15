@@ -376,6 +376,8 @@ private:
 
 		float queuePriority = 1.0f;
 		queueCI.pQueuePriorities = &queuePriority;
+
+		VkPhysicalDeviceFeatures deviceFeatures{};
 	}
 	#pragma endregion CREATE LOGICAL DEVICE
 	#pragma endregion INIT VULKAN
