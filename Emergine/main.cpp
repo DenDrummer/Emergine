@@ -102,6 +102,9 @@ private:
 
 	// graphics queue
 	VkQueue graphicsQueue;
+
+	// window surface (aka the canvas of the window on which things get drawn)
+	VkSurfaceKHR surface;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -123,6 +126,7 @@ private:
 	void initVulkan() {
 		createInstance();
 		setupDebugMessenger();
+		createSurface();
 		pickPhysicalDevice();
 		createLogicalDevice();
 	}
@@ -241,6 +245,16 @@ private:
 		}
 	}
 	#pragma endregion CREATE INSTANCE
+
+	#pragma region --- CREATE SURFACE ---
+	void createSurface() {
+		if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create window surface!");
+		}
+	}
+	#pragma endregion CREATE SURFACE
+
 
 	#pragma region --- PHYSICAL DEVICE ---
 	void pickPhysicalDevice() {
@@ -505,6 +519,9 @@ private:
 		{
 			DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 		}
+
+		// destroy the surface of the window
+		vkDestroySurfaceKHR(instance, surface, nullptr);
 
 		// destroy the vulkan instance
 		vkDestroyInstance(instance, nullptr);
