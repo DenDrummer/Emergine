@@ -268,7 +268,6 @@ private:
 	}
 	#pragma endregion CREATE SURFACE
 
-
 	#pragma region --- PHYSICAL DEVICE ---
 	void pickPhysicalDevice() {
 		// count devices with vulkan support
@@ -422,7 +421,7 @@ private:
 	}
 	#pragma endregion PHYSICAL DEVICE
 
-	#pragma region --- CREATE LOGICAL DEVICE ---
+	#pragma region --- LOGICAL DEVICE ---
 	void createLogicalDevice() {
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
@@ -459,7 +458,8 @@ private:
 
 		createInfo.pEnabledFeatures = &deviceFeatures;
 
-		createInfo.enabledExtensionCount = 0;
+		createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
 		// ignored by up-to-date implementations,
 		// but assigned for more backwards compatibility
@@ -482,7 +482,7 @@ private:
 		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 	}
-	#pragma endregion CREATE LOGICAL DEVICE
+	#pragma endregion LOGICAL DEVICE
 	#pragma endregion INIT VULKAN
 
 	#pragma region --- DEBUG ---
