@@ -49,7 +49,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 6);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 7);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -79,6 +79,12 @@ struct QueueFamilyIndices
 		return graphicsFamily.has_value()
 			&& presentFamily.has_value();
 	}
+};
+
+struct SwapChainSupportDetails {
+	VkSurfaceCapabilitiesKHR capabilities;
+	vector<VkSurfaceFormatKHR> formats;
+	vector<VkPresentModeKHR> presentModes;
 };
 #pragma endregion STRUCTS
 
@@ -332,7 +338,16 @@ private:
 
 		bool extensionsSupported = checkDeviceExtensionSupport(device);
 
-		return indices.isComplete() && extensionsSupported;
+		bool swapChainAdequate = false;
+		if (extensionsSupported)
+		{
+			SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device);
+			swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+		}
+
+		return indices.isComplete()
+			&& extensionsSupported // redundant? as swapChainAdequate will always be false if this is false
+			&& swapChainAdequate;
 	}
 
 	int rateDeviceSuitability(VkPhysicalDevice device) {
@@ -418,6 +433,37 @@ private:
 		}
 
 		return requiredExtensions.empty();
+	}
+
+	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device) {
+		SwapChainSupportDetails details;
+
+		// surface capabilities
+		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+
+		#pragma region --- SURFACE FORMATS ---
+		uint32_t formatCount;
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
+
+		if (formatCount != 0)
+		{
+			details.formats.resize(formatCount);
+			vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+		}
+		#pragma endregion SURFACE FORMATS
+
+		#pragma region --- PRESENTATION MODES ---
+		uint32_t presentModeCount;
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+		if (presentModeCount != 0)
+		{
+			details.presentModes.resize(presentModeCount);
+			vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+		}
+		#pragma endregion PRESENTATION MODES
+
+		return details;
 	}
 	#pragma endregion PHYSICAL DEVICE
 
