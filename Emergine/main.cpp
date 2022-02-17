@@ -274,7 +274,7 @@ private:
 	}
 	#pragma endregion CREATE SURFACE
 
-	#pragma region --- PHYSICAL DEVICE ---
+	#pragma region --- SELECT PHYSICAL DEVICE ---
 	void pickPhysicalDevice() {
 		// count devices with vulkan support
 		uint32_t deviceCount = 0;
@@ -465,9 +465,9 @@ private:
 
 		return details;
 	}
-	#pragma endregion PHYSICAL DEVICE
+	#pragma endregion SELECT PHYSICAL DEVICE
 
-	#pragma region --- LOGICAL DEVICE ---
+	#pragma region --- CREATE LOGICAL DEVICE ---
 	void createLogicalDevice() {
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
@@ -528,7 +528,25 @@ private:
 		vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
 		vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 	}
-	#pragma endregion LOGICAL DEVICE
+	#pragma endregion CREATE LOGICAL DEVICE
+
+	#pragma region --- CREATE SWAP CHAIN ---
+	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const vector<VkSurfaceFormatKHR>& availableFormats) {
+		for (const VkSurfaceFormatKHR& availableFormat : availableFormats)
+		{
+			if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB
+				&& availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			{
+				return availableFormat;
+			}
+		}
+
+		// you could rate formats,
+		// but usuallyfirst specified format is okay as backup if there's no SRGB
+		return availableFormats[0];
+	}
+	#pragma endregion CREATE SWAP CHAIN
+
 	#pragma endregion INIT VULKAN
 
 	#pragma region --- DEBUG ---
