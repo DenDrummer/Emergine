@@ -51,6 +51,7 @@ const uint32_t HEIGHT = 600;
 const char* TITLE = "Emergine";
 const auto VERSION = VK_MAKE_VERSION(0, 1, 6);
 
+#pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
@@ -60,6 +61,11 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif // NDEBUG
+#pragma endregion VALIDATION LAYERS
+
+const vector<const char*> deviceExtensions = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
 
 #pragma endregion CONSTANTS
 
@@ -325,7 +331,9 @@ private:
 
 		QueueFamilyIndices indices = findQueueFamilies(device);
 
-		return indices.isComplete();
+		bool extensionsSupported = checkDeviceExtensionSupport(device);
+
+		return indices.isComplete() && extensionsSupported;
 	}
 
 	int rateDeviceSuitability(VkPhysicalDevice device) {
@@ -394,6 +402,23 @@ private:
 		}
 
 		return indices;
+	}
+
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
+		uint32_t extensionCount;
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+		vector<VkExtensionProperties> availableExtensions(extensionCount);
+		vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+		set<string> requiredExtensions(deviceExtensions.begin(), deviceExtensions.end());
+
+		for (const VkExtensionProperties& extension : availableExtensions)
+		{
+			requiredExtensions.erase(extension.extensionName);
+		}
+
+		return requiredExtensions.empty();
 	}
 	#pragma endregion PHYSICAL DEVICE
 
