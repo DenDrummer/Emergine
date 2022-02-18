@@ -542,8 +542,20 @@ private:
 		}
 
 		// you could rate formats,
-		// but usuallyfirst specified format is okay as backup if there's no SRGB
+		// but usually first specified format is okay as backup if there's no SRGB
 		return availableFormats[0];
+	}
+
+	VkPresentModeKHR chooseSwapPresentMode(const vector<VkPresentModeKHR>& availablePresentModes) {
+		// see PresentationModes.md for explanation
+		for (const VkPresentModeKHR& availablePresentMode : availablePresentModes) {
+			if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+			{
+				return availablePresentMode;
+			}
+		}
+
+		return VK_PRESENT_MODE_FIFO_KHR;
 	}
 	#pragma endregion CREATE SWAP CHAIN
 

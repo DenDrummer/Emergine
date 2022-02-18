@@ -1,3 +1,13 @@
+Since this information is slightly outdated with 1.3 now out, check:
+https://www.khronos.org/registry/vulkan/specs/
+and then browse to
+A) .../**X**-extensions/html/
+B) .../**X**-khr-extensions/html/
+C) .../**X**/html/
+with **X** being the latest version, for example **1.3**.
+and then find `Appendix D: Core Revisions (Informative)` near the bottom of the left navigation bar
+These pages will also have the info regarding all older major revisions and are basically identical between the three options.
+
 # Vulkan 1.0
 Always go for this version unless your application **requires** something introduced in later versions.
 ### Extensions
