@@ -113,19 +113,17 @@ private:
 	// window surface (aka the canvas of the window on which things get drawn)
 	VkSurfaceKHR surface;
 
-	#pragma region --- DEVICES ---
 	// physical device (aka GPU)
 	// implicitly destroyed with the vulkan instance
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	// logical device
 	VkDevice device;
-	#pragma endregion DEVICES
 
-	#pragma region QUEUES
-	// graphics queue
 	VkQueue graphicsQueue;
 	// presentation queue
 	VkQueue presentQueue;
+
+	VkSwapchainKHR swapChain;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -150,6 +148,7 @@ private:
 		createSurface();
 		pickPhysicalDevice();
 		createLogicalDevice();
+		createSwapChain();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -336,6 +335,7 @@ private:
 			&& feats.geometryShader;*/
 		#pragma endregion EXAMPLE CHECKS
 
+		// TODO? store indices as class member?
 		QueueFamilyIndices indices = findQueueFamilies(device);
 
 		bool extensionsSupported = checkDeviceExtensionSupport(device);
@@ -471,6 +471,7 @@ private:
 
 	#pragma region --- CREATE LOGICAL DEVICE ---
 	void createLogicalDevice() {
+		// TODO? store indices as class member?
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
 		#pragma region --- QUEUE CREATE INFO ---
@@ -533,6 +534,94 @@ private:
 	#pragma endregion CREATE LOGICAL DEVICE
 
 	#pragma region --- CREATE SWAP CHAIN ---
+	void createSwapChain() {
+		SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+
+		VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+		VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+		VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+		// using minimum may cause waiting times,
+		// due to having to wait on new free image to start rendering to
+		// TODO? swap "swapChainSupport.capabilities" for "extent"
+		uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+
+		// no maximum limit --> max = 0
+		// minimum might be equal to maximum --> put imageCount back to min
+		// TODO? swap "swapChainSupport.capabilities" for "extent"
+		if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+		{
+			imageCount = swapChainSupport.capabilities.maxImageCount;
+		}
+
+		#pragma region --- SWAP CHAIN CREATE INFO ---
+		VkSwapchainCreateInfoKHR createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+		createInfo.surface = surface;
+		
+		#pragma region --- IMAGE DETAILS ---
+		createInfo.minImageCount = imageCount;
+		createInfo.imageFormat = surfaceFormat.format;
+		createInfo.imageColorSpace = surfaceFormat.colorSpace;
+		createInfo.imageExtent = extent;
+
+		// always 1 unless making stereoscopic 3D
+		createInfo.imageArrayLayers = 1;
+
+		// specifies the kind of operations the images will be used for
+		// here: render directly to them --> VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+		// render to other image first (e.g. for post-processing) --> something like VK_IMAGE_USAGE_TRANSFER_DST_BIT
+		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+		#pragma endregion IMAGE DETAILS
+
+		#pragma region --- QUEUE FAMILIES ---
+		// TODO? store indices as class member?
+		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+		uint32_t queueFamilyIndices[] = {
+			indices.graphicsFamily.value(),
+			indices.presentFamily.value()
+		};
+
+		if (indices.graphicsFamily != indices.presentFamily)
+		{
+			// imgs can be used accross multiple queue families without explicit ownership transfers
+			// requires at least 2 distinct queue families
+			createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+			createInfo.queueFamilyIndexCount = 2;
+			createInfo.pQueueFamilyIndices = queueFamilyIndices;
+		}
+		else
+		{
+			// img owned by 1 queue family at a time and ownership must be explicitly transferred before using in another
+			// best performance
+			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+			createInfo.queueFamilyIndexCount = 0; // optional
+			createInfo.pQueueFamilyIndices = nullptr; // optional
+		}
+		#pragma endregion QUEUE FAMILIES
+
+		// can specify transform to images if transform listed in capabilities.supportedTransforms
+		// no transform --> currentTransform
+		createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+
+		// almost always ignore alpha channel --> VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR
+		createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+
+		createInfo.presentMode = presentMode;
+
+		// VK_TRUE --> don't care about color of obscured pixels, but higher performance
+		createInfo.clipped = VK_TRUE;
+
+		// TODO: needed for window resizing
+		createInfo.oldSwapchain = VK_NULL_HANDLE;
+		#pragma endregion SWAP CHAIN CREATE INFO
+
+		if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create swap chain!");
+		}
+	}
+
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const vector<VkSurfaceFormatKHR>& availableFormats) {
 		for (const VkSurfaceFormatKHR& availableFormat : availableFormats)
 		{
@@ -561,7 +650,8 @@ private:
 	}
 
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-		// TODO: what about portrait mode?
+		// if images can be different resolution than window,
+		// width and height in currentExtent will be set to UINT32_MAX
 		if (capabilities.currentExtent.width != UINT32_MAX)
 		{
 			return capabilities.currentExtent;
@@ -579,7 +669,7 @@ private:
 			actualExtent.width = clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
 			actualExtent.height = clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 
-			return actualExtent
+			return actualExtent;
 		}
 	}
 	#pragma endregion CREATE SWAP CHAIN
@@ -666,6 +756,9 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the swap chain
+		vkDestroySwapchainKHR(device, swapChain, nullptr);
+
 		// destroy the logical device
 		vkDestroyDevice(device, nullptr);
 
