@@ -51,7 +51,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 7);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 8);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -112,21 +112,29 @@ private:
 	VkDebugUtilsMessengerEXT debugMessenger;
 	// window surface (aka the canvas of the window on which things get drawn)
 	VkSurfaceKHR surface;
-
+	
+	#pragma region --- DEVICES ---
 	// physical device (aka GPU)
 	// implicitly destroyed with the vulkan instance
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	// logical device
 	VkDevice device;
-
+	#pragma endregion DEVICES
+	
+	#pragma region --- QUEUES ---
 	VkQueue graphicsQueue;
 	// presentation queue
 	VkQueue presentQueue;
+	#pragma endregion QUEUES
 
+	#pragma region --- SWAP CHAIN ---
 	VkSwapchainKHR swapChain;
 	vector<VkImage> swapChainImages;
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
+	#pragma endregion SWAP CHAIN
+
+	vector<VkImageView> swapChainImageViews;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -152,6 +160,7 @@ private:
 		pickPhysicalDevice();
 		createLogicalDevice();
 		createSwapChain();
+		createImageViews();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -683,6 +692,22 @@ private:
 		}
 	}
 	#pragma endregion CREATE SWAP CHAIN
+	
+	#pragma region --- CREATE IMAGE VIEWS ---
+	void createImageViews() {
+		swapChainImageViews.resize(swapChainImages.size());
+
+		// create an image view for each of the images on the queue
+		for (size_t i = 0; i < swapChainImages.size(); i++)
+		{
+			#pragma region --- CREATE INFO ---
+			VkImageViewCreateInfo createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			createInfo.format = swapChainImageFormat;
+			#pragma endregion CREATE INFO
+		}
+	}
+	#pragma endregion CREATE IMAGE VIEWS
 
 	#pragma endregion INIT VULKAN
 
