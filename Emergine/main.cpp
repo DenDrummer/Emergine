@@ -703,8 +703,33 @@ private:
 			#pragma region --- CREATE INFO ---
 			VkImageViewCreateInfo createInfo{};
 			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			createInfo.image = swapChainImages[i];
+
+			// viewType and format specify how the image data should be interpreted
+			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 			createInfo.format = swapChainImageFormat;
+
+			// components allow you to swizzle (shuffle) the color channelz around
+			createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+			createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+			createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+			createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+			// subresourceRange describes image's purpose and which part should be accessed
+			// here: color targets without mipmapping and only 1 layer
+			// if stereographic 3D: swapchain with multiple layers;
+			//		multiple image views for each image, representing views for left and right eyes by accessing different layers
+			createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			createInfo.subresourceRange.baseMipLevel = 0;
+			createInfo.subresourceRange.levelCount = 1;
+			createInfo.subresourceRange.baseArrayLayer = 0;
+			createInfo.subresourceRange.layerCount = 1;
 			#pragma endregion CREATE INFO
+
+			if (vkCreateImageView(device, &createInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS)
+			{
+				yeet broken_shoe("failed to create image views!");
+			}
 		}
 	}
 	#pragma endregion CREATE IMAGE VIEWS
@@ -791,6 +816,11 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the image views
+		for (VkImageView imageView : swapChainImageViews) {
+			vkDestroyImageView(device, imageView, nullptr);
+		}
+
 		// destroy the swap chain
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 
