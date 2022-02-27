@@ -51,7 +51,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 8);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 9);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -161,6 +161,7 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createGraphicsPipeline();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -733,6 +734,12 @@ private:
 		}
 	}
 	#pragma endregion CREATE IMAGE VIEWS
+
+	#pragma region --- CREATE GRAPHICS PIPELINE ---
+	void createGraphicsPipeline() {
+
+	}
+	#pragma endregion CREATE GRAPHICS PIPELINE
 
 	#pragma endregion INIT VULKAN
 
