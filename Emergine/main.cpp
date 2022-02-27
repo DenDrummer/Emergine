@@ -51,7 +51,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 9);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 10);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
