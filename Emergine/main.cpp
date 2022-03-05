@@ -748,7 +748,27 @@ private:
 		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
-		// TODO: do something with the shader modules
+		#pragma region --- VERT SHADER STAGE INFO ---
+		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		vertShaderStageInfo.module = vertShaderModule;
+		vertShaderStageInfo.pName = "main";
+		// optional, used to specify contstants defined at pipeline creation
+		vertShaderStageInfo.pSpecializationInfo = nullptr;
+		#pragma endregion VERT SHADER STAGE INFO
+
+		#pragma region --- FRAG SHADER STAGE INFO ---
+		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		vertShaderStageInfo.module = fragShaderModule;
+		vertShaderStageInfo.pName = "main";
+		// optional, used to specify contstants defined at pipeline creation
+		vertShaderStageInfo.pSpecializationInfo = nullptr;
+		#pragma endregion FRAG SHADER STAGE INFO
+
+		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
