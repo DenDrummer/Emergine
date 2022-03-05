@@ -29,5 +29,14 @@
     <None Include="Shaders\shader.frag">
       <Filter>Shader Files</Filter>
     </None>
+    <None Include="Shaders\compile.bat">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="Shaders\frag.spv">
+      <Filter>Shader Files</Filter>
+    </None>
+    <None Include="Shaders\vert.spv">
+      <Filter>Shader Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
