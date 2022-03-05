@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -51,7 +52,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 9);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 10);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -69,6 +70,8 @@ const vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+const string VERT_SHADER_PATH = "shaders/vert.spv";
+const string FRAG_SHADER_PATH = "shaders/frag.spv";
 #pragma endregion CONSTANTS
 
 #pragma region --- STRUCTS ---
@@ -737,7 +740,80 @@ private:
 
 	#pragma region --- CREATE GRAPHICS PIPELINE ---
 	void createGraphicsPipeline() {
+		// readFile returns vector<char>
+		auto vertShaderCode = readFile(VERT_SHADER_PATH);
+		auto fragShaderCode = readFile(FRAG_SHADER_PATH);
 
+		// shader modules only required fore pipeline creation, so only required locally
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+		#pragma region --- VERT SHADER STAGE INFO ---
+		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		vertShaderStageInfo.module = vertShaderModule;
+		vertShaderStageInfo.pName = "main";
+		// optional, used to specify contstants defined at pipeline creation
+		vertShaderStageInfo.pSpecializationInfo = nullptr;
+		#pragma endregion VERT SHADER STAGE INFO
+
+		#pragma region --- FRAG SHADER STAGE INFO ---
+		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		vertShaderStageInfo.module = fragShaderModule;
+		vertShaderStageInfo.pName = "main";
+		// optional, used to specify contstants defined at pipeline creation
+		vertShaderStageInfo.pSpecializationInfo = nullptr;
+		#pragma endregion FRAG SHADER STAGE INFO
+
+		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+
+		vkDestroyShaderModule(device, fragShaderModule, nullptr);
+		vkDestroyShaderModule(device, vertShaderModule, nullptr);
+	}
+
+	static vector<char> readFile(const string& filename) {
+		// ate: start reading At The End of the file
+		//		can use read position to determine size of file and allocate a buffer
+		// binary: read is binary, avoiding text transformations
+		ifstream file(filename, ios::ate | ios::binary);
+
+		if (!file.is_open())
+		{
+			yeet broken_shoe("failed to open file!");
+		}
+
+		size_t fileSize = (size_t)file.tellg();
+		vector<char> buffer(fileSize);
+
+		// return to file start and read entire file at once
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
+		file.close();
+
+		return buffer;
+	}
+
+	VkShaderModule createShaderModule(const vector<char>& code) {
+		#pragma region --- SHADER MODULE CREATE INFO ---
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = code.size();
+		// reinterpret_cast needed as pointer is stored as bytecode but needs to be uint32_t
+		// reinterpret_cast requires that data satisfies allignment requirements of uint32_t, which already is the case here
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+		#pragma endregion SHADER MODULE CREATE INFO
+
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create shader module!");
+		}
+
+		return shaderModule;
 	}
 	#pragma endregion CREATE GRAPHICS PIPELINE
 
