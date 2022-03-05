@@ -760,12 +760,12 @@ private:
 
 		#pragma region --- FRAG SHADER STAGE INFO ---
 		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
-		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-		vertShaderStageInfo.module = fragShaderModule;
-		vertShaderStageInfo.pName = "main";
+		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		fragShaderStageInfo.module = fragShaderModule;
+		fragShaderStageInfo.pName = "main";
 		// optional, used to specify contstants defined at pipeline creation
-		vertShaderStageInfo.pSpecializationInfo = nullptr;
+		fragShaderStageInfo.pSpecializationInfo = nullptr;
 		#pragma endregion FRAG SHADER STAGE INFO
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
