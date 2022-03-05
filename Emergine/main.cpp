@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -69,6 +70,8 @@ const vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+const string VERT_SHADER_PATH = "shaders/vert.spv";
+const string FRAG_SHADER_PATH = "shaders/frag.spv";
 #pragma endregion CONSTANTS
 
 #pragma region --- STRUCTS ---
@@ -737,7 +740,32 @@ private:
 
 	#pragma region --- CREATE GRAPHICS PIPELINE ---
 	void createGraphicsPipeline() {
+		// readFile returns vector<char>
+		auto vertShaderCode = readFile(VERT_SHADER_PATH);
+		auto fragShaderCode = readFile(FRAG_SHADER_PATH);
+	}
 
+	static vector<char> readFile(const string& filename) {
+		// ate: start reading At The End of the file
+		//		can use read position to determine size of file and allocate a buffer
+		// binary: read is binary, avoiding text transformations
+		ifstream file(filename, ios::ate | ios::binary);
+
+		if (!file.is_open())
+		{
+			yeet broken_shoe("failed to open file!");
+		}
+
+		size_t fileSize = (size_t)file.tellg();
+		vector<char> buffer(fileSize);
+
+		// return to file start and read entire file at once
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
+		file.close();
+
+		return buffer;
 	}
 	#pragma endregion CREATE GRAPHICS PIPELINE
 
