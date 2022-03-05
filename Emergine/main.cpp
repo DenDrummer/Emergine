@@ -743,6 +743,15 @@ private:
 		// readFile returns vector<char>
 		auto vertShaderCode = readFile(VERT_SHADER_PATH);
 		auto fragShaderCode = readFile(FRAG_SHADER_PATH);
+
+		// shader modules only required fore pipeline creation, so only required locally
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+		// TODO: do something with the shader modules
+
+		vkDestroyShaderModule(device, fragShaderModule, nullptr);
+		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 	}
 
 	static vector<char> readFile(const string& filename) {
@@ -766,6 +775,25 @@ private:
 		file.close();
 
 		return buffer;
+	}
+
+	VkShaderModule createShaderModule(const vector<char>& code) {
+		#pragma region --- SHADER MODULE CREATE INFO ---
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = code.size();
+		// reinterpret_cast needed as pointer is stored as bytecode but needs to be uint32_t
+		// reinterpret_cast requires that data satisfies allignment requirements of uint32_t, which already is the case here
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+		#pragma endregion SHADER MODULE CREATE INFO
+
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create shader module!");
+		}
+
+		return shaderModule;
 	}
 	#pragma endregion CREATE GRAPHICS PIPELINE
 
