@@ -796,6 +796,32 @@ private:
 		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
 		#pragma endregion INPUT ASSEMBLY CREATE INFO
+		
+		#pragma region --- VIEWPORT STATE CREATE INFO ---
+		#pragma region --- VIEWPORT ---
+		VkViewport viewport{};
+		viewport.x = 0;
+		viewport.y = 0;
+		viewport.width = (float)swapChainExtent.width;
+		viewport.height = (float)swapChainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		#pragma endregion VIEWPORT
+
+		#pragma region --- SCISSOR ---
+		VkRect2D scissor{};
+		scissor.offset = { 0, 0 };
+		scissor.extent = swapChainExtent;
+		#pragma endregion SCISSOR
+
+		VkPipelineViewportStateCreateInfo viewportState{};
+		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		// TODO: possibly required to change to 2 viewports (and scissors?) for VR? would require GPU feature
+		viewportState.viewportCount = 1;
+		viewportState.pViewports = &viewport;
+		viewportState.scissorCount = 1;
+		viewportState.pScissors = &scissor;
+		#pragma endregion VIEWPORT STATE CREATE INFO
 		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
