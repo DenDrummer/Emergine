@@ -908,6 +908,20 @@ private:
 		colorBlending.blendConstants[3] = 0.0f;		// optional
 		#pragma endregion COLOR BLEND STATE
 		#pragma endregion COLOR BLENDING
+		
+		#pragma region --- DYNAMIC STATE ---
+		// will be revisited
+		// dynamicStates can besubstituted by nullptr if there are none
+		vector<VkDynamicState> dynamicStates = {
+			VK_DYNAMIC_STATE_VIEWPORT,
+			VK_DYNAMIC_STATE_LINE_WIDTH
+		};
+
+		VkPipelineDynamicStateCreateInfo dynamicState{};
+		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+		dynamicState.pDynamicStates = dynamicStates.data();
+		#pragma endregion DYNAMIC STATE
 		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
