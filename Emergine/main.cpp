@@ -822,6 +822,41 @@ private:
 		viewportState.scissorCount = 1;
 		viewportState.pScissors = &scissor;
 		#pragma endregion VIEWPORT STATE CREATE INFO
+		
+		#pragma region --- RASTERIZER CREATE INFO ---
+		VkPipelineRasterizationStateCreateInfo rasterizer{};
+		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		// depthClampEnable = VK_FALSE : fragments beyond the depth clamp are discarded
+		// depthClampEnable = VK_TRUE : fragments beyond the depth clamp are clamped, requires a GPU-feature.
+		//		useful in special cases like shadowmaps
+		rasterizer.depthClampEnable = VK_FALSE;
+
+		// if rasterizerDiscardEnable is set to VK_TRUE, geometry never passes through the rasterizer.
+		// basically disables output to the framebuffer
+		rasterizer.rasterizerDiscardEnable = VK_FALSE;
+
+		// polygonMode determines how fragments are generated for geometry.
+		// main modes:
+		//		VK_POLYGON_MODE_FILL	: fill the area of the polygon with fragments
+		//		VK_POLYGON_MODE_LINE	: polygon edges are drawn as lines
+		//		VK_POLYGON_MODE_POINT	: polygon vertices are drawn as points
+		// modes other than _FILL require a GPU-feature
+		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+
+		// max width depends on hardware
+		// any line thicker than 1.0f requires the wideLines GPU-feature
+		rasterizer.lineWidth = 1.0f;
+
+		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+
+		// rasterizer can alter depth values.
+		// sometimes used for shadow mapping
+		rasterizer.depthBiasEnable = VK_FALSE;
+		rasterizer.depthBiasConstantFactor = 0.0f; // optional
+		rasterizer.depthBiasClamp = 0.0f; // optional
+		rasterizer.depthBiasSlopeFactor = 0.0f; // optional
+		#pragma endregion RASTERIZER CREATE INFO
 		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
