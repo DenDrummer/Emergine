@@ -876,6 +876,38 @@ private:
 		// will be revisited
 		// uses VkPipelineDepthStencilStateCreateInfo
 		#pragma endregion DEPTH AND STENCIL TESTING
+		
+		#pragma region --- COLOR BLENDING ---
+		#pragma region --- COLOR BLEND ATTACHMENT ---
+		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+		colorBlendAttachment.colorWriteMask =
+			VK_COLOR_COMPONENT_R_BIT
+			| VK_COLOR_COMPONENT_G_BIT
+			| VK_COLOR_COMPONENT_B_BIT
+			| VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_FALSE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;		// optional
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;	// optional
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;				// optional
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;		// optional
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;	// optional
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;				// optional
+		#pragma endregion COLOR BLEND ATTACHMENT
+		
+		#pragma region --- COLOR BLEND STATE ---
+		VkPipelineColorBlendStateCreateInfo colorBlending{};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		// set logicOpEnable to VK_TRUE for bitwise blending, will disable regular blending
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = VK_LOGIC_OP_COPY;	// optional
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &colorBlendAttachment;
+		colorBlending.blendConstants[0] = 0.0f;		// optional
+		colorBlending.blendConstants[1] = 0.0f;		// optional
+		colorBlending.blendConstants[2] = 0.0f;		// optional
+		colorBlending.blendConstants[3] = 0.0f;		// optional
+		#pragma endregion COLOR BLEND STATE
+		#pragma endregion COLOR BLENDING
 		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
