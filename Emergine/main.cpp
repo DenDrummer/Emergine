@@ -772,6 +772,7 @@ private:
 		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 		#pragma endregion SHADER STAGES
 		
+		#pragma region --- FIXED FUNCTIONS ---
 		#pragma region --- VERTEX INPUT CREATE INFO ---
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -780,6 +781,22 @@ private:
 		vertexInputInfo.vertexAttributeDescriptionCount = 0;
 		vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 		#pragma endregion VERTEX INPUT CREATE INFO
+		
+		#pragma region --- INPUT ASSEMBLY CREATE INFO ---
+		// example topologies:
+		//		VK_PRIMITIVE_TOPOLOGY_POINT_LIST: points from vertices
+		//		VK_PRIMITIVE_TOPOLOGY_LINE_LIST: line from every 2 vertices without reuse
+		//		VK_PRIMITIVE_TOPOLOGY_LINE_STRIP: end vertex of every line is used as start vertex for next line
+		//		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: triangle from every 3 vertices without reuse
+		//		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: the second and third vertex of every triangle are used as first two vertices of the next triangle
+		// with an element buffer, indices can be manually specified, allowing optimizations like vertex reuse
+		// if primitiveRestartEnable set to VK_TRUE, possible to break up lines and triangles in _STRIP topologies by using 0xFFFF or 0xFFFFFFFF index
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.primitiveRestartEnable = VK_FALSE;
+		#pragma endregion INPUT ASSEMBLY CREATE INFO
+		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
