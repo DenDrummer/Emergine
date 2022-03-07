@@ -870,6 +870,12 @@ private:
 		multisampling.alphaToCoverageEnable = VK_FALSE;	// optional
 		multisampling.alphaToOneEnable = VK_FALSE;		// optional
 		#pragma endregion MULTISAMPLING
+		
+		#pragma region --- DEPTH AND STENCIL TESTING ---
+		// required when using depth and/or stencil buffer
+		// will be revisited
+		// uses VkPipelineDepthStencilStateCreateInfo
+		#pragma endregion DEPTH AND STENCIL TESTING
 		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
