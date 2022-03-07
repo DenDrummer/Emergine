@@ -52,7 +52,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 10);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 11);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -740,6 +740,7 @@ private:
 
 	#pragma region --- CREATE GRAPHICS PIPELINE ---
 	void createGraphicsPipeline() {
+		#pragma region --- SHADER STAGES ---
 		// readFile returns vector<char>
 		auto vertShaderCode = readFile(VERT_SHADER_PATH);
 		auto fragShaderCode = readFile(FRAG_SHADER_PATH);
@@ -748,7 +749,7 @@ private:
 		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
-		#pragma region --- VERT SHADER STAGE INFO ---
+		#pragma region --- VERT SHADER STAGE CREATE INFO ---
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -756,9 +757,9 @@ private:
 		vertShaderStageInfo.pName = "main";
 		// optional, used to specify contstants defined at pipeline creation
 		vertShaderStageInfo.pSpecializationInfo = nullptr;
-		#pragma endregion VERT SHADER STAGE INFO
+		#pragma endregion VERT SHADER STAGE CREATE INFO
 
-		#pragma region --- FRAG SHADER STAGE INFO ---
+		#pragma region --- FRAG SHADER STAGE CREATE INFO ---
 		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
 		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		fragShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -766,9 +767,19 @@ private:
 		fragShaderStageInfo.pName = "main";
 		// optional, used to specify contstants defined at pipeline creation
 		fragShaderStageInfo.pSpecializationInfo = nullptr;
-		#pragma endregion FRAG SHADER STAGE INFO
+		#pragma endregion FRAG SHADER STAGE CREATE INFO
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+		#pragma endregion SHADER STAGES
+		
+		#pragma region --- VERTEX INPUT CREATE INFO ---
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 0;
+		vertexInputInfo.pVertexBindingDescriptions = nullptr;
+		vertexInputInfo.vertexAttributeDescriptionCount = 0;
+		vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+		#pragma endregion VERTEX INPUT CREATE INFO
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
