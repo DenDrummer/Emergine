@@ -52,7 +52,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 10);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 11);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -138,6 +138,8 @@ private:
 	#pragma endregion SWAP CHAIN
 
 	vector<VkImageView> swapChainImageViews;
+
+	VkPipelineLayout pipelineLayout;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -740,6 +742,7 @@ private:
 
 	#pragma region --- CREATE GRAPHICS PIPELINE ---
 	void createGraphicsPipeline() {
+		#pragma region --- SHADER STAGES ---
 		// readFile returns vector<char>
 		auto vertShaderCode = readFile(VERT_SHADER_PATH);
 		auto fragShaderCode = readFile(FRAG_SHADER_PATH);
@@ -748,7 +751,7 @@ private:
 		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
 		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
-		#pragma region --- VERT SHADER STAGE INFO ---
+		#pragma region --- VERT SHADER STAGE CREATE INFO ---
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -756,9 +759,9 @@ private:
 		vertShaderStageInfo.pName = "main";
 		// optional, used to specify contstants defined at pipeline creation
 		vertShaderStageInfo.pSpecializationInfo = nullptr;
-		#pragma endregion VERT SHADER STAGE INFO
+		#pragma endregion VERT SHADER STAGE CREATE INFO
 
-		#pragma region --- FRAG SHADER STAGE INFO ---
+		#pragma region --- FRAG SHADER STAGE CREATE INFO ---
 		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
 		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 		fragShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -766,9 +769,177 @@ private:
 		fragShaderStageInfo.pName = "main";
 		// optional, used to specify contstants defined at pipeline creation
 		fragShaderStageInfo.pSpecializationInfo = nullptr;
-		#pragma endregion FRAG SHADER STAGE INFO
+		#pragma endregion FRAG SHADER STAGE CREATE INFO
 
 		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+		#pragma endregion SHADER STAGES
+		
+		#pragma region --- FIXED FUNCTIONS ---
+		#pragma region --- VERTEX INPUT ---
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 0;
+		vertexInputInfo.pVertexBindingDescriptions = nullptr;
+		vertexInputInfo.vertexAttributeDescriptionCount = 0;
+		vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+		#pragma endregion VERTEX INPUT
+		
+		#pragma region --- INPUT ASSEMBLY ---
+		// example topologies:
+		//		VK_PRIMITIVE_TOPOLOGY_POINT_LIST: points from vertices
+		//		VK_PRIMITIVE_TOPOLOGY_LINE_LIST: line from every 2 vertices without reuse
+		//		VK_PRIMITIVE_TOPOLOGY_LINE_STRIP: end vertex of every line is used as start vertex for next line
+		//		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: triangle from every 3 vertices without reuse
+		//		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: the second and third vertex of every triangle are used as first two vertices of the next triangle
+		// with an element buffer, indices can be manually specified, allowing optimizations like vertex reuse
+		// if primitiveRestartEnable set to VK_TRUE, possible to break up lines and triangles in _STRIP topologies by using 0xFFFF or 0xFFFFFFFF index
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.primitiveRestartEnable = VK_FALSE;
+		#pragma endregion INPUT ASSEMBLY
+		
+		#pragma region --- VIEWPORT STATE ---
+		#pragma region --- VIEWPORT ---
+		VkViewport viewport{};
+		viewport.x = 0;
+		viewport.y = 0;
+		viewport.width = (float)swapChainExtent.width;
+		viewport.height = (float)swapChainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		#pragma endregion VIEWPORT
+
+		#pragma region --- SCISSOR ---
+		VkRect2D scissor{};
+		scissor.offset = { 0, 0 };
+		scissor.extent = swapChainExtent;
+		#pragma endregion SCISSOR
+
+		VkPipelineViewportStateCreateInfo viewportState{};
+		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		// TODO: possibly required to change to 2 viewports (and scissors?) for VR? would require GPU feature
+		viewportState.viewportCount = 1;
+		viewportState.pViewports = &viewport;
+		viewportState.scissorCount = 1;
+		viewportState.pScissors = &scissor;
+		#pragma endregion VIEWPORT STATE
+		
+		#pragma region --- RASTERIZER ---
+		VkPipelineRasterizationStateCreateInfo rasterizer{};
+		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		// depthClampEnable = VK_FALSE : fragments beyond the depth clamp are discarded
+		// depthClampEnable = VK_TRUE : fragments beyond the depth clamp are clamped, requires a GPU-feature.
+		//		useful in special cases like shadowmaps
+		rasterizer.depthClampEnable = VK_FALSE;
+
+		// if rasterizerDiscardEnable is set to VK_TRUE, geometry never passes through the rasterizer.
+		// basically disables output to the framebuffer
+		rasterizer.rasterizerDiscardEnable = VK_FALSE;
+
+		// polygonMode determines how fragments are generated for geometry.
+		// main modes:
+		//		VK_POLYGON_MODE_FILL	: fill the area of the polygon with fragments
+		//		VK_POLYGON_MODE_LINE	: polygon edges are drawn as lines
+		//		VK_POLYGON_MODE_POINT	: polygon vertices are drawn as points
+		// modes other than _FILL require a GPU-feature
+		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+
+		// max width depends on hardware
+		// any line thicker than 1.0f requires the wideLines GPU-feature
+		rasterizer.lineWidth = 1.0f;
+
+		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+
+		// rasterizer can alter depth values.
+		// sometimes used for shadow mapping
+		rasterizer.depthBiasEnable = VK_FALSE;
+		rasterizer.depthBiasConstantFactor = 0.0f; // optional
+		rasterizer.depthBiasClamp = 0.0f; // optional
+		rasterizer.depthBiasSlopeFactor = 0.0f; // optional
+		#pragma endregion RASTERIZER
+		
+		#pragma region --- MULTISAMPLING ---
+		// enabling this requires a GPU feature
+		// will be revisited
+		VkPipelineMultisampleStateCreateInfo multisampling{};
+		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampling.sampleShadingEnable = VK_FALSE;
+		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisampling.minSampleShading = 1.0f;			// optional
+		multisampling.pSampleMask = nullptr;			// optional
+		multisampling.alphaToCoverageEnable = VK_FALSE;	// optional
+		multisampling.alphaToOneEnable = VK_FALSE;		// optional
+		#pragma endregion MULTISAMPLING
+		
+		#pragma region --- DEPTH AND STENCIL TESTING ---
+		// required when using depth and/or stencil buffer
+		// will be revisited
+		// uses VkPipelineDepthStencilStateCreateInfo
+		#pragma endregion DEPTH AND STENCIL TESTING
+		
+		#pragma region --- COLOR BLENDING ---
+		#pragma region --- COLOR BLEND ATTACHMENT ---
+		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+		colorBlendAttachment.colorWriteMask =
+			VK_COLOR_COMPONENT_R_BIT
+			| VK_COLOR_COMPONENT_G_BIT
+			| VK_COLOR_COMPONENT_B_BIT
+			| VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_FALSE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;		// optional
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;	// optional
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;				// optional
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;		// optional
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;	// optional
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;				// optional
+		#pragma endregion COLOR BLEND ATTACHMENT
+		
+		#pragma region --- COLOR BLEND STATE ---
+		VkPipelineColorBlendStateCreateInfo colorBlending{};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		// set logicOpEnable to VK_TRUE for bitwise blending, will disable regular blending
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = VK_LOGIC_OP_COPY;	// optional
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &colorBlendAttachment;
+		colorBlending.blendConstants[0] = 0.0f;		// optional
+		colorBlending.blendConstants[1] = 0.0f;		// optional
+		colorBlending.blendConstants[2] = 0.0f;		// optional
+		colorBlending.blendConstants[3] = 0.0f;		// optional
+		#pragma endregion COLOR BLEND STATE
+		#pragma endregion COLOR BLENDING
+		
+		#pragma region --- DYNAMIC STATE ---
+		// will be revisited
+		// dynamicStates can besubstituted by nullptr if there are none
+		vector<VkDynamicState> dynamicStates = {
+			VK_DYNAMIC_STATE_VIEWPORT,
+			VK_DYNAMIC_STATE_LINE_WIDTH
+		};
+
+		VkPipelineDynamicStateCreateInfo dynamicState{};
+		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+		dynamicState.pDynamicStates = dynamicStates.data();
+		#pragma endregion DYNAMIC STATE
+		
+		#pragma region --- PIPELINE LAYOUT ---
+		// may be revisited
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 0;				// optional
+		pipelineLayoutInfo.pSetLayouts = nullptr;			// optional
+		pipelineLayoutInfo.pushConstantRangeCount = 0;		// optional
+		pipelineLayoutInfo.pPushConstantRanges = nullptr;	// optional
+
+		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create pipeline layout!");
+		}
+		#pragma endregion PIPELINE LAYOUT
+		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
@@ -899,6 +1070,9 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the pipeline layout
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
 		// destroy the image views
 		for (VkImageView imageView : swapChainImageViews) {
 			vkDestroyImageView(device, imageView, nullptr);
