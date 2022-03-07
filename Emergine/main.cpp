@@ -773,16 +773,16 @@ private:
 		#pragma endregion SHADER STAGES
 		
 		#pragma region --- FIXED FUNCTIONS ---
-		#pragma region --- VERTEX INPUT CREATE INFO ---
+		#pragma region --- VERTEX INPUT ---
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputInfo.vertexBindingDescriptionCount = 0;
 		vertexInputInfo.pVertexBindingDescriptions = nullptr;
 		vertexInputInfo.vertexAttributeDescriptionCount = 0;
 		vertexInputInfo.pVertexAttributeDescriptions = nullptr;
-		#pragma endregion VERTEX INPUT CREATE INFO
+		#pragma endregion VERTEX INPUT
 		
-		#pragma region --- INPUT ASSEMBLY CREATE INFO ---
+		#pragma region --- INPUT ASSEMBLY ---
 		// example topologies:
 		//		VK_PRIMITIVE_TOPOLOGY_POINT_LIST: points from vertices
 		//		VK_PRIMITIVE_TOPOLOGY_LINE_LIST: line from every 2 vertices without reuse
@@ -795,9 +795,9 @@ private:
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 		inputAssembly.primitiveRestartEnable = VK_FALSE;
-		#pragma endregion INPUT ASSEMBLY CREATE INFO
+		#pragma endregion INPUT ASSEMBLY
 		
-		#pragma region --- VIEWPORT STATE CREATE INFO ---
+		#pragma region --- VIEWPORT STATE ---
 		#pragma region --- VIEWPORT ---
 		VkViewport viewport{};
 		viewport.x = 0;
@@ -821,9 +821,9 @@ private:
 		viewportState.pViewports = &viewport;
 		viewportState.scissorCount = 1;
 		viewportState.pScissors = &scissor;
-		#pragma endregion VIEWPORT STATE CREATE INFO
+		#pragma endregion VIEWPORT STATE
 		
-		#pragma region --- RASTERIZER CREATE INFO ---
+		#pragma region --- RASTERIZER ---
 		VkPipelineRasterizationStateCreateInfo rasterizer{};
 		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		// depthClampEnable = VK_FALSE : fragments beyond the depth clamp are discarded
@@ -856,7 +856,20 @@ private:
 		rasterizer.depthBiasConstantFactor = 0.0f; // optional
 		rasterizer.depthBiasClamp = 0.0f; // optional
 		rasterizer.depthBiasSlopeFactor = 0.0f; // optional
-		#pragma endregion RASTERIZER CREATE INFO
+		#pragma endregion RASTERIZER
+		
+		#pragma region --- MULTISAMPLING ---
+		// enabling this requires a GPU feature
+		// will be revisited
+		VkPipelineMultisampleStateCreateInfo multisampling{};
+		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampling.sampleShadingEnable = VK_FALSE;
+		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisampling.minSampleShading = 1.0f;			// optional
+		multisampling.pSampleMask = nullptr;			// optional
+		multisampling.alphaToCoverageEnable = VK_FALSE;	// optional
+		multisampling.alphaToOneEnable = VK_FALSE;		// optional
+		#pragma endregion MULTISAMPLING
 		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
