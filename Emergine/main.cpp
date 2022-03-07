@@ -138,6 +138,8 @@ private:
 	#pragma endregion SWAP CHAIN
 
 	vector<VkImageView> swapChainImageViews;
+
+	VkPipelineLayout pipelineLayout;
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -922,6 +924,21 @@ private:
 		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 		dynamicState.pDynamicStates = dynamicStates.data();
 		#pragma endregion DYNAMIC STATE
+		
+		#pragma region --- PIPELINE LAYOUT ---
+		// may be revisited
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 0;				// optional
+		pipelineLayoutInfo.pSetLayouts = nullptr;			// optional
+		pipelineLayoutInfo.pushConstantRangeCount = 0;		// optional
+		pipelineLayoutInfo.pPushConstantRanges = nullptr;	// optional
+
+		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create pipeline layout!");
+		}
+		#pragma endregion PIPELINE LAYOUT
 		#pragma endregion FIXED FUNCTIONS
 
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
@@ -1053,6 +1070,9 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the pipeline layout
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
 		// destroy the image views
 		for (VkImageView imageView : swapChainImageViews) {
 			vkDestroyImageView(device, imageView, nullptr);
