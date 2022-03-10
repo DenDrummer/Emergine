@@ -52,7 +52,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 11);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 12);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -166,6 +166,7 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createRenderPass();
 		createGraphicsPipeline();
 	}
 
@@ -739,6 +740,12 @@ private:
 		}
 	}
 	#pragma endregion CREATE IMAGE VIEWS
+
+	#pragma region --- CREATE RENDER PASSES ---
+	void createRenderPass() {
+
+	}
+	#pragma endregion CREATE RENDER PASSES
 
 	#pragma region --- CREATE GRAPHICS PIPELINE ---
 	void createGraphicsPipeline() {
