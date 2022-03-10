@@ -771,6 +771,20 @@ private:
 		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 		#pragma endregion COLOR ATTACHMENT
+		
+		#pragma region --- COLOR ATTACHMENT REFERENCE ---
+		VkAttachmentReference colorAttachmentRef{};
+		// index of attachment
+		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+		#pragma region --- SUBPASS ---
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+		#pragma endregion SUBPASS
+		#pragma endregion COLOR ATTACHMENT REFERENCE
 	}
 	#pragma endregion CREATE RENDER PASSES
 
