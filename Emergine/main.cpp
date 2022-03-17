@@ -52,7 +52,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 12);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 13);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -109,6 +109,7 @@ private:
 	// the window holding the application
 	GLFWwindow* window;
 
+	#pragma region --- VULKAN CLASS MEMBERS ---
 	// the vulkan instance
 	VkInstance instance;
 	// vulkan debug messenger
@@ -139,8 +140,12 @@ private:
 
 	vector<VkImageView> swapChainImageViews;
 
+	#pragma region --- GFX PIPELINE ---
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
+	VkPipeline graphicsPipeline;
+	#pragma endregion GFX PIPELINE
+	#pragma endregion VULKAN CLASS MEMBERS
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -834,7 +839,7 @@ private:
 		fragShaderStageInfo.pSpecializationInfo = nullptr;
 		#pragma endregion FRAG SHADER STAGE CREATE INFO
 
-		VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
+		vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
 		#pragma endregion SHADER STAGES
 		
 		#pragma region --- FIXED FUNCTIONS ---
@@ -1004,6 +1009,40 @@ private:
 		#pragma endregion PIPELINE LAYOUT
 		#pragma endregion FIXED FUNCTIONS
 
+		#pragma region --- GRAPHICS PIPELINE ---
+		VkGraphicsPipelineCreateInfo pipelineInfo{};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+		pipelineInfo.pStages = shaderStages.data();
+
+		// fixed function structs
+		pipelineInfo.pVertexInputState = &vertexInputInfo;
+		pipelineInfo.pInputAssemblyState = &inputAssembly;
+		pipelineInfo.pViewportState = &viewportState;
+		pipelineInfo.pRasterizationState = &rasterizer;
+		pipelineInfo.pMultisampleState = &multisampling;
+		pipelineInfo.pDepthStencilState = nullptr;	// optional
+		pipelineInfo.pColorBlendState = &colorBlending;
+		pipelineInfo.pDynamicState = nullptr;		// optional
+
+		// pipeline layout
+		pipelineInfo.layout = pipelineLayout;
+
+		// render pass or other compatible thing
+		pipelineInfo.renderPass = renderPass;
+		// index of subpass where this GFX pipeline will be used
+		pipelineInfo.subpass = 0;
+
+		// optional parameters if you want to use multiple pipelines
+		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.basePipelineIndex = -1;
+		#pragma endregion GRAPHICS PIPELINE
+
+		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create graphics pipeline!");
+		}
+
 		vkDestroyShaderModule(device, fragShaderModule, nullptr);
 		vkDestroyShaderModule(device, vertShaderModule, nullptr);
 	}
@@ -1050,7 +1089,6 @@ private:
 		return shaderModule;
 	}
 	#pragma endregion CREATE GRAPHICS PIPELINE
-
 	#pragma endregion INIT VULKAN
 
 	#pragma region --- DEBUG ---
@@ -1133,6 +1171,8 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the pipeline
+		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		// destroy the pipeline layout
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 		// destroy the render pass
