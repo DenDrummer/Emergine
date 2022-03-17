@@ -139,6 +139,7 @@ private:
 
 	vector<VkImageView> swapChainImageViews;
 
+	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
 	#pragma endregion CLASS MEMBERS
 
@@ -777,6 +778,7 @@ private:
 		// index of attachment
 		colorAttachmentRef.attachment = 0;
 		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		#pragma endregion COLOR ATTACHMENT REFERENCE
 
 		#pragma region --- SUBPASS ---
 		VkSubpassDescription subpass{};
@@ -784,7 +786,20 @@ private:
 		subpass.colorAttachmentCount = 1;
 		subpass.pColorAttachments = &colorAttachmentRef;
 		#pragma endregion SUBPASS
-		#pragma endregion COLOR ATTACHMENT REFERENCE
+
+		#pragma region --- RENDER PASS ---
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = 1;
+		renderPassInfo.pAttachments = &colorAttachment;
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+		#pragma endregion RENDER PASS
+
+		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create render pass!");
+		}
 	}
 	#pragma endregion CREATE RENDER PASSES
 
@@ -1120,6 +1135,8 @@ private:
 	void cleanup() {
 		// destroy the pipeline layout
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		// destroy the render pass
+		vkDestroyRenderPass(device, renderPass, nullptr);
 
 		// destroy the image views
 		for (VkImageView imageView : swapChainImageViews) {
@@ -1128,7 +1145,6 @@ private:
 
 		// destroy the swap chain
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
-
 		// destroy the logical device
 		vkDestroyDevice(device, nullptr);
 
@@ -1140,7 +1156,6 @@ private:
 
 		// destroy the surface of the window
 		vkDestroySurfaceKHR(instance, surface, nullptr);
-
 		// destroy the vulkan instance
 		vkDestroyInstance(instance, nullptr);
 
