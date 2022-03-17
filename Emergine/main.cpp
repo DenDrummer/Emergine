@@ -52,7 +52,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 11);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 12);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -139,6 +139,7 @@ private:
 
 	vector<VkImageView> swapChainImageViews;
 
+	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
 	#pragma endregion CLASS MEMBERS
 
@@ -166,6 +167,7 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createRenderPass();
 		createGraphicsPipeline();
 	}
 
@@ -740,6 +742,67 @@ private:
 	}
 	#pragma endregion CREATE IMAGE VIEWS
 
+	#pragma region --- CREATE RENDER PASSES ---
+	void createRenderPass() {
+		#pragma region --- COLOR ATTACHMENT ---
+		VkAttachmentDescription colorAttachment{};
+		colorAttachment.format = swapChainImageFormat;
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+
+		/// determines what to do with data in attachment before rendering
+		// main options:
+		//		VK_ATTACHMENT_LOAD_OP_LOAD: Preserve existing contents
+		//		VK_ATTACHMENT_LOAD_OP_CLEAR: Clear values to a constant
+		//		VK_ATTACHMENT_LOAD_OP_DONT_CARE: Existing contents are set to undefined
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		/// determines what to do with data in attachment after rendering
+		// main options:
+		//		VK_ATTACHMENT_STORE_OP_STORE: Rendered contents stored in memory and can be read later
+		//		VK_ATTACHMENT_STORE_OP_DONT_CARE: Contents of framebuffer will be undefined
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+		// most common image layouts:
+		//		VK_IMAGE_LAYOUT_UNDEFINED: don't care, but contents of image not guaranteed to be preserved
+		//		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: Images used as color attachment
+		//		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: Images to be presented in the swap chain
+		//		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: Images to be used as destination for a memory copy operation
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		#pragma endregion COLOR ATTACHMENT
+		
+		#pragma region --- COLOR ATTACHMENT REFERENCE ---
+		VkAttachmentReference colorAttachmentRef{};
+		// index of attachment
+		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		#pragma endregion COLOR ATTACHMENT REFERENCE
+
+		#pragma region --- SUBPASS ---
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+		#pragma endregion SUBPASS
+
+		#pragma region --- RENDER PASS ---
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = 1;
+		renderPassInfo.pAttachments = &colorAttachment;
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+		#pragma endregion RENDER PASS
+
+		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create render pass!");
+		}
+	}
+	#pragma endregion CREATE RENDER PASSES
+
 	#pragma region --- CREATE GRAPHICS PIPELINE ---
 	void createGraphicsPipeline() {
 		#pragma region --- SHADER STAGES ---
@@ -1072,6 +1135,8 @@ private:
 	void cleanup() {
 		// destroy the pipeline layout
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		// destroy the render pass
+		vkDestroyRenderPass(device, renderPass, nullptr);
 
 		// destroy the image views
 		for (VkImageView imageView : swapChainImageViews) {
@@ -1080,7 +1145,6 @@ private:
 
 		// destroy the swap chain
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
-
 		// destroy the logical device
 		vkDestroyDevice(device, nullptr);
 
@@ -1092,7 +1156,6 @@ private:
 
 		// destroy the surface of the window
 		vkDestroySurfaceKHR(instance, surface, nullptr);
-
 		// destroy the vulkan instance
 		vkDestroyInstance(instance, nullptr);
 
