@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <optional>
@@ -51,7 +52,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 8);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 13);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -69,6 +70,8 @@ const vector<const char*> deviceExtensions = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
+const string VERT_SHADER_PATH = "shaders/vert.spv";
+const string FRAG_SHADER_PATH = "shaders/frag.spv";
 #pragma endregion CONSTANTS
 
 #pragma region --- STRUCTS ---
@@ -106,6 +109,7 @@ private:
 	// the window holding the application
 	GLFWwindow* window;
 
+	#pragma region --- VULKAN CLASS MEMBERS ---
 	// the vulkan instance
 	VkInstance instance;
 	// vulkan debug messenger
@@ -135,6 +139,13 @@ private:
 	#pragma endregion SWAP CHAIN
 
 	vector<VkImageView> swapChainImageViews;
+
+	#pragma region --- GFX PIPELINE ---
+	VkRenderPass renderPass;
+	VkPipelineLayout pipelineLayout;
+	VkPipeline graphicsPipeline;
+	#pragma endregion GFX PIPELINE
+	#pragma endregion VULKAN CLASS MEMBERS
 	#pragma endregion CLASS MEMBERS
 
 	#pragma region --- INIT WINDOW ---
@@ -161,6 +172,8 @@ private:
 		createLogicalDevice();
 		createSwapChain();
 		createImageViews();
+		createRenderPass();
+		createGraphicsPipeline();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -734,6 +747,348 @@ private:
 	}
 	#pragma endregion CREATE IMAGE VIEWS
 
+	#pragma region --- CREATE RENDER PASSES ---
+	void createRenderPass() {
+		#pragma region --- COLOR ATTACHMENT ---
+		VkAttachmentDescription colorAttachment{};
+		colorAttachment.format = swapChainImageFormat;
+		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+
+		/// determines what to do with data in attachment before rendering
+		// main options:
+		//		VK_ATTACHMENT_LOAD_OP_LOAD: Preserve existing contents
+		//		VK_ATTACHMENT_LOAD_OP_CLEAR: Clear values to a constant
+		//		VK_ATTACHMENT_LOAD_OP_DONT_CARE: Existing contents are set to undefined
+		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+		/// determines what to do with data in attachment after rendering
+		// main options:
+		//		VK_ATTACHMENT_STORE_OP_STORE: Rendered contents stored in memory and can be read later
+		//		VK_ATTACHMENT_STORE_OP_DONT_CARE: Contents of framebuffer will be undefined
+		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+		colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+		colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+		// most common image layouts:
+		//		VK_IMAGE_LAYOUT_UNDEFINED: don't care, but contents of image not guaranteed to be preserved
+		//		VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: Images used as color attachment
+		//		VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: Images to be presented in the swap chain
+		//		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL: Images to be used as destination for a memory copy operation
+		colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		#pragma endregion COLOR ATTACHMENT
+		
+		#pragma region --- COLOR ATTACHMENT REFERENCE ---
+		VkAttachmentReference colorAttachmentRef{};
+		// index of attachment
+		colorAttachmentRef.attachment = 0;
+		colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		#pragma endregion COLOR ATTACHMENT REFERENCE
+
+		#pragma region --- SUBPASS ---
+		VkSubpassDescription subpass{};
+		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+		subpass.colorAttachmentCount = 1;
+		subpass.pColorAttachments = &colorAttachmentRef;
+		#pragma endregion SUBPASS
+
+		#pragma region --- RENDER PASS ---
+		VkRenderPassCreateInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+		renderPassInfo.attachmentCount = 1;
+		renderPassInfo.pAttachments = &colorAttachment;
+		renderPassInfo.subpassCount = 1;
+		renderPassInfo.pSubpasses = &subpass;
+		#pragma endregion RENDER PASS
+
+		if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create render pass!");
+		}
+	}
+	#pragma endregion CREATE RENDER PASSES
+
+	#pragma region --- CREATE GRAPHICS PIPELINE ---
+	void createGraphicsPipeline() {
+		#pragma region --- SHADER STAGES ---
+		// readFile returns vector<char>
+		auto vertShaderCode = readFile(VERT_SHADER_PATH);
+		auto fragShaderCode = readFile(FRAG_SHADER_PATH);
+
+		// shader modules only required fore pipeline creation, so only required locally
+		VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+		VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+
+		#pragma region --- VERT SHADER STAGE CREATE INFO ---
+		VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		vertShaderStageInfo.module = vertShaderModule;
+		vertShaderStageInfo.pName = "main";
+		// optional, used to specify contstants defined at pipeline creation
+		vertShaderStageInfo.pSpecializationInfo = nullptr;
+		#pragma endregion VERT SHADER STAGE CREATE INFO
+
+		#pragma region --- FRAG SHADER STAGE CREATE INFO ---
+		VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+		fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+		fragShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+		fragShaderStageInfo.module = fragShaderModule;
+		fragShaderStageInfo.pName = "main";
+		// optional, used to specify contstants defined at pipeline creation
+		fragShaderStageInfo.pSpecializationInfo = nullptr;
+		#pragma endregion FRAG SHADER STAGE CREATE INFO
+
+		vector<VkPipelineShaderStageCreateInfo> shaderStages = {vertShaderStageInfo, fragShaderStageInfo};
+		#pragma endregion SHADER STAGES
+		
+		#pragma region --- FIXED FUNCTIONS ---
+		#pragma region --- VERTEX INPUT ---
+		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+		vertexInputInfo.vertexBindingDescriptionCount = 0;
+		vertexInputInfo.pVertexBindingDescriptions = nullptr;
+		vertexInputInfo.vertexAttributeDescriptionCount = 0;
+		vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+		#pragma endregion VERTEX INPUT
+		
+		#pragma region --- INPUT ASSEMBLY ---
+		// example topologies:
+		//		VK_PRIMITIVE_TOPOLOGY_POINT_LIST: points from vertices
+		//		VK_PRIMITIVE_TOPOLOGY_LINE_LIST: line from every 2 vertices without reuse
+		//		VK_PRIMITIVE_TOPOLOGY_LINE_STRIP: end vertex of every line is used as start vertex for next line
+		//		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST: triangle from every 3 vertices without reuse
+		//		VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP: the second and third vertex of every triangle are used as first two vertices of the next triangle
+		// with an element buffer, indices can be manually specified, allowing optimizations like vertex reuse
+		// if primitiveRestartEnable set to VK_TRUE, possible to break up lines and triangles in _STRIP topologies by using 0xFFFF or 0xFFFFFFFF index
+		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+		inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		inputAssembly.primitiveRestartEnable = VK_FALSE;
+		#pragma endregion INPUT ASSEMBLY
+		
+		#pragma region --- VIEWPORT STATE ---
+		#pragma region --- VIEWPORT ---
+		VkViewport viewport{};
+		viewport.x = 0;
+		viewport.y = 0;
+		viewport.width = (float)swapChainExtent.width;
+		viewport.height = (float)swapChainExtent.height;
+		viewport.minDepth = 0.0f;
+		viewport.maxDepth = 1.0f;
+		#pragma endregion VIEWPORT
+
+		#pragma region --- SCISSOR ---
+		VkRect2D scissor{};
+		scissor.offset = { 0, 0 };
+		scissor.extent = swapChainExtent;
+		#pragma endregion SCISSOR
+
+		VkPipelineViewportStateCreateInfo viewportState{};
+		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+		// TODO: possibly required to change to 2 viewports (and scissors?) for VR? would require GPU feature
+		viewportState.viewportCount = 1;
+		viewportState.pViewports = &viewport;
+		viewportState.scissorCount = 1;
+		viewportState.pScissors = &scissor;
+		#pragma endregion VIEWPORT STATE
+		
+		#pragma region --- RASTERIZER ---
+		VkPipelineRasterizationStateCreateInfo rasterizer{};
+		rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+		// depthClampEnable = VK_FALSE : fragments beyond the depth clamp are discarded
+		// depthClampEnable = VK_TRUE : fragments beyond the depth clamp are clamped, requires a GPU-feature.
+		//		useful in special cases like shadowmaps
+		rasterizer.depthClampEnable = VK_FALSE;
+
+		// if rasterizerDiscardEnable is set to VK_TRUE, geometry never passes through the rasterizer.
+		// basically disables output to the framebuffer
+		rasterizer.rasterizerDiscardEnable = VK_FALSE;
+
+		// polygonMode determines how fragments are generated for geometry.
+		// main modes:
+		//		VK_POLYGON_MODE_FILL	: fill the area of the polygon with fragments
+		//		VK_POLYGON_MODE_LINE	: polygon edges are drawn as lines
+		//		VK_POLYGON_MODE_POINT	: polygon vertices are drawn as points
+		// modes other than _FILL require a GPU-feature
+		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+
+		// max width depends on hardware
+		// any line thicker than 1.0f requires the wideLines GPU-feature
+		rasterizer.lineWidth = 1.0f;
+
+		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+
+		// rasterizer can alter depth values.
+		// sometimes used for shadow mapping
+		rasterizer.depthBiasEnable = VK_FALSE;
+		rasterizer.depthBiasConstantFactor = 0.0f; // optional
+		rasterizer.depthBiasClamp = 0.0f; // optional
+		rasterizer.depthBiasSlopeFactor = 0.0f; // optional
+		#pragma endregion RASTERIZER
+		
+		#pragma region --- MULTISAMPLING ---
+		// enabling this requires a GPU feature
+		// will be revisited
+		VkPipelineMultisampleStateCreateInfo multisampling{};
+		multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+		multisampling.sampleShadingEnable = VK_FALSE;
+		multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+		multisampling.minSampleShading = 1.0f;			// optional
+		multisampling.pSampleMask = nullptr;			// optional
+		multisampling.alphaToCoverageEnable = VK_FALSE;	// optional
+		multisampling.alphaToOneEnable = VK_FALSE;		// optional
+		#pragma endregion MULTISAMPLING
+		
+		#pragma region --- DEPTH AND STENCIL TESTING ---
+		// required when using depth and/or stencil buffer
+		// will be revisited
+		// uses VkPipelineDepthStencilStateCreateInfo
+		#pragma endregion DEPTH AND STENCIL TESTING
+		
+		#pragma region --- COLOR BLENDING ---
+		#pragma region --- COLOR BLEND ATTACHMENT ---
+		VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+		colorBlendAttachment.colorWriteMask =
+			VK_COLOR_COMPONENT_R_BIT
+			| VK_COLOR_COMPONENT_G_BIT
+			| VK_COLOR_COMPONENT_B_BIT
+			| VK_COLOR_COMPONENT_A_BIT;
+		colorBlendAttachment.blendEnable = VK_FALSE;
+		colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;		// optional
+		colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;	// optional
+		colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;				// optional
+		colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;		// optional
+		colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;	// optional
+		colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;				// optional
+		#pragma endregion COLOR BLEND ATTACHMENT
+		
+		#pragma region --- COLOR BLEND STATE ---
+		VkPipelineColorBlendStateCreateInfo colorBlending{};
+		colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+		// set logicOpEnable to VK_TRUE for bitwise blending, will disable regular blending
+		colorBlending.logicOpEnable = VK_FALSE;
+		colorBlending.logicOp = VK_LOGIC_OP_COPY;	// optional
+		colorBlending.attachmentCount = 1;
+		colorBlending.pAttachments = &colorBlendAttachment;
+		colorBlending.blendConstants[0] = 0.0f;		// optional
+		colorBlending.blendConstants[1] = 0.0f;		// optional
+		colorBlending.blendConstants[2] = 0.0f;		// optional
+		colorBlending.blendConstants[3] = 0.0f;		// optional
+		#pragma endregion COLOR BLEND STATE
+		#pragma endregion COLOR BLENDING
+		
+		#pragma region --- DYNAMIC STATE ---
+		// will be revisited
+		// dynamicStates can besubstituted by nullptr if there are none
+		vector<VkDynamicState> dynamicStates = {
+			VK_DYNAMIC_STATE_VIEWPORT,
+			VK_DYNAMIC_STATE_LINE_WIDTH
+		};
+
+		VkPipelineDynamicStateCreateInfo dynamicState{};
+		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+		dynamicState.pDynamicStates = dynamicStates.data();
+		#pragma endregion DYNAMIC STATE
+		
+		#pragma region --- PIPELINE LAYOUT ---
+		// may be revisited
+		VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+		pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutInfo.setLayoutCount = 0;				// optional
+		pipelineLayoutInfo.pSetLayouts = nullptr;			// optional
+		pipelineLayoutInfo.pushConstantRangeCount = 0;		// optional
+		pipelineLayoutInfo.pPushConstantRanges = nullptr;	// optional
+
+		if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create pipeline layout!");
+		}
+		#pragma endregion PIPELINE LAYOUT
+		#pragma endregion FIXED FUNCTIONS
+
+		#pragma region --- GRAPHICS PIPELINE ---
+		VkGraphicsPipelineCreateInfo pipelineInfo{};
+		pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+		pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+		pipelineInfo.pStages = shaderStages.data();
+
+		// fixed function structs
+		pipelineInfo.pVertexInputState = &vertexInputInfo;
+		pipelineInfo.pInputAssemblyState = &inputAssembly;
+		pipelineInfo.pViewportState = &viewportState;
+		pipelineInfo.pRasterizationState = &rasterizer;
+		pipelineInfo.pMultisampleState = &multisampling;
+		pipelineInfo.pDepthStencilState = nullptr;	// optional
+		pipelineInfo.pColorBlendState = &colorBlending;
+		pipelineInfo.pDynamicState = nullptr;		// optional
+
+		// pipeline layout
+		pipelineInfo.layout = pipelineLayout;
+
+		// render pass or other compatible thing
+		pipelineInfo.renderPass = renderPass;
+		// index of subpass where this GFX pipeline will be used
+		pipelineInfo.subpass = 0;
+
+		// optional parameters if you want to use multiple pipelines
+		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+		pipelineInfo.basePipelineIndex = -1;
+		#pragma endregion GRAPHICS PIPELINE
+
+		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create graphics pipeline!");
+		}
+
+		vkDestroyShaderModule(device, fragShaderModule, nullptr);
+		vkDestroyShaderModule(device, vertShaderModule, nullptr);
+	}
+
+	static vector<char> readFile(const string& filename) {
+		// ate: start reading At The End of the file
+		//		can use read position to determine size of file and allocate a buffer
+		// binary: read is binary, avoiding text transformations
+		ifstream file(filename, ios::ate | ios::binary);
+
+		if (!file.is_open())
+		{
+			yeet broken_shoe("failed to open file!");
+		}
+
+		size_t fileSize = (size_t)file.tellg();
+		vector<char> buffer(fileSize);
+
+		// return to file start and read entire file at once
+		file.seekg(0);
+		file.read(buffer.data(), fileSize);
+
+		file.close();
+
+		return buffer;
+	}
+
+	VkShaderModule createShaderModule(const vector<char>& code) {
+		#pragma region --- SHADER MODULE CREATE INFO ---
+		VkShaderModuleCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		createInfo.codeSize = code.size();
+		// reinterpret_cast needed as pointer is stored as bytecode but needs to be uint32_t
+		// reinterpret_cast requires that data satisfies allignment requirements of uint32_t, which already is the case here
+		createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+		#pragma endregion SHADER MODULE CREATE INFO
+
+		VkShaderModule shaderModule;
+		if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
+		{
+			yeet broken_shoe("failed to create shader module!");
+		}
+
+		return shaderModule;
+	}
+	#pragma endregion CREATE GRAPHICS PIPELINE
 	#pragma endregion INIT VULKAN
 
 	#pragma region --- DEBUG ---
@@ -816,6 +1171,13 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy the pipeline
+		vkDestroyPipeline(device, graphicsPipeline, nullptr);
+		// destroy the pipeline layout
+		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+		// destroy the render pass
+		vkDestroyRenderPass(device, renderPass, nullptr);
+
 		// destroy the image views
 		for (VkImageView imageView : swapChainImageViews) {
 			vkDestroyImageView(device, imageView, nullptr);
@@ -823,7 +1185,6 @@ private:
 
 		// destroy the swap chain
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
-
 		// destroy the logical device
 		vkDestroyDevice(device, nullptr);
 
@@ -835,7 +1196,6 @@ private:
 
 		// destroy the surface of the window
 		vkDestroySurfaceKHR(instance, surface, nullptr);
-
 		// destroy the vulkan instance
 		vkDestroyInstance(instance, nullptr);
 
