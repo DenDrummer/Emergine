@@ -52,7 +52,7 @@ const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
 
 const char* TITLE = "Emergine";
-const auto VERSION = VK_MAKE_VERSION(0, 1, 13);
+const auto VERSION = VK_MAKE_VERSION(0, 1, 14);
 
 #pragma region --- VALIDATION LAYERS ---
 const vector<const char*> validationLayers = {
@@ -136,9 +136,9 @@ private:
 	vector<VkImage> swapChainImages;
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
-	#pragma endregion SWAP CHAIN
-
 	vector<VkImageView> swapChainImageViews;
+	vector<VkFramebuffer> swapChainFramebuffers;
+	#pragma endregion SWAP CHAIN
 
 	#pragma region --- GFX PIPELINE ---
 	VkRenderPass renderPass;
@@ -174,6 +174,7 @@ private:
 		createImageViews();
 		createRenderPass();
 		createGraphicsPipeline();
+		createFrameBuffers();
 	}
 
 	#pragma region --- CREATE INSTANCE ---
@@ -900,11 +901,9 @@ private:
 		// depthClampEnable = VK_TRUE : fragments beyond the depth clamp are clamped, requires a GPU-feature.
 		//		useful in special cases like shadowmaps
 		rasterizer.depthClampEnable = VK_FALSE;
-
 		// if rasterizerDiscardEnable is set to VK_TRUE, geometry never passes through the rasterizer.
 		// basically disables output to the framebuffer
 		rasterizer.rasterizerDiscardEnable = VK_FALSE;
-
 		// polygonMode determines how fragments are generated for geometry.
 		// main modes:
 		//		VK_POLYGON_MODE_FILL	: fill the area of the polygon with fragments
@@ -912,20 +911,17 @@ private:
 		//		VK_POLYGON_MODE_POINT	: polygon vertices are drawn as points
 		// modes other than _FILL require a GPU-feature
 		rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-
 		// max width depends on hardware
 		// any line thicker than 1.0f requires the wideLines GPU-feature
 		rasterizer.lineWidth = 1.0f;
-
 		rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 		rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
-
 		// rasterizer can alter depth values.
 		// sometimes used for shadow mapping
 		rasterizer.depthBiasEnable = VK_FALSE;
-		rasterizer.depthBiasConstantFactor = 0.0f; // optional
-		rasterizer.depthBiasClamp = 0.0f; // optional
-		rasterizer.depthBiasSlopeFactor = 0.0f; // optional
+		rasterizer.depthBiasConstantFactor = 0.0f;	// optional
+		rasterizer.depthBiasClamp = 0.0f;			// optional
+		rasterizer.depthBiasSlopeFactor = 0.0f;		// optional
 		#pragma endregion RASTERIZER
 		
 		#pragma region --- MULTISAMPLING ---
@@ -1024,20 +1020,18 @@ private:
 		pipelineInfo.pDepthStencilState = nullptr;	// optional
 		pipelineInfo.pColorBlendState = &colorBlending;
 		pipelineInfo.pDynamicState = nullptr;		// optional
-
 		// pipeline layout
 		pipelineInfo.layout = pipelineLayout;
-
 		// render pass or other compatible thing
 		pipelineInfo.renderPass = renderPass;
 		// index of subpass where this GFX pipeline will be used
 		pipelineInfo.subpass = 0;
-
 		// optional parameters if you want to use multiple pipelines
 		pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 		pipelineInfo.basePipelineIndex = -1;
 		#pragma endregion GRAPHICS PIPELINE
 
+		// TODO: fix exception from nvoglv64.dll: "Access violation reading location 0x..."
 		if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
 		{
 			yeet broken_shoe("failed to create graphics pipeline!");
@@ -1087,6 +1081,35 @@ private:
 		}
 
 		return shaderModule;
+	}
+	#pragma endregion CREATE GRAPHICS PIPELINE
+
+	#pragma region --- CREATE GRAPHICS PIPELINE ---
+	void createFrameBuffers() {
+		swapChainFramebuffers.resize(swapChainImageViews.size());
+
+		for (size_t i = 0; i < swapChainImageViews.size(); i++)
+		{
+			VkImageView attachments[] = {
+				swapChainImageViews[i]
+			};
+
+			#pragma region --- FRAMEBUFFER INFO ---
+			VkFramebufferCreateInfo framebufferInfo{};
+			framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferInfo.renderPass = renderPass;
+			framebufferInfo.attachmentCount = 1;
+			framebufferInfo.pAttachments = attachments;
+			framebufferInfo.width = swapChainExtent.width;
+			framebufferInfo.height = swapChainExtent.height;
+			framebufferInfo.layers = 1;
+			#pragma endregion FRAMEBUFFER INFO
+
+			if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
+			{
+				yeet broken_shoe("failed to create framebuffer!");
+			}
+		}
 	}
 	#pragma endregion CREATE GRAPHICS PIPELINE
 	#pragma endregion INIT VULKAN
@@ -1171,6 +1194,12 @@ private:
 	
 	#pragma region --- CLEANUP ---
 	void cleanup() {
+		// destroy all the framebuffers
+		for (auto framebuffer : swapChainFramebuffers)
+		{
+			vkDestroyFramebuffer(device, framebuffer, nullptr);
+		}
+
 		// destroy the pipeline
 		vkDestroyPipeline(device, graphicsPipeline, nullptr);
 		// destroy the pipeline layout
