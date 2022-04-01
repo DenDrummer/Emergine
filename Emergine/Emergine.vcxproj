@@ -100,6 +100,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.162.1\Include;C:\Users\Jorden\Documents\Visual Studio 2019\Libraries\glm;C:\Users\Jorden\Documents\Visual Studio 2019\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>26495;26812</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -118,6 +119,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.162.1\Include;C:\Users\Jorden\Documents\Visual Studio 2019\Libraries\glm;C:\Users\Jorden\Documents\Visual Studio 2019\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>26495;26812</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -136,6 +138,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.162.1\Include;C:\Users\Jorden\Documents\Visual Studio 2019\Libraries\glm;C:\Users\Jorden\Documents\Visual Studio 2019\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>26495;26812</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -154,6 +157,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\VulkanSDK\1.2.162.1\Include;C:\Users\Jorden\Documents\Visual Studio 2019\Libraries\glm;C:\Users\Jorden\Documents\Visual Studio 2019\Libraries\glfw\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <DisableSpecificWarnings>26495;26812</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
